@@ -535,3 +535,23 @@ class Permission(SharedMixin, models.Model):
                 perminst.name = perm.name
             if ll:
                 await perminst.save(update_fields=ll)
+
+
+# Instead of inheriting from TortoiseBaseOAuthAccountModel
+class OAuthAccount(SharedMixin, models.Model):
+    id = fields.UUIDField(pk=True, generated=False, max_length=255)
+    oauth_name = fields.CharField(max_length=255)
+    # access_token = fields.CharField(max_length=255, default='')
+    # expires_at = fields.IntField(default=None)
+    # refresh_token = fields.CharField(max_length=255, default='')
+    account_id = fields.CharField(index=True, max_length=255)
+    account_email = fields.CharField(null=False, max_length=255)
+    
+    # Don't change the related_name for this field. Fastapi-users uses it.
+    user = fields.ForeignKeyField("models.UserMod", related_name="oauth_accounts")
+    updated_at = fields.DatetimeField(auto_now=True)
+    created_at = fields.DatetimeField(auto_now_add=True)
+    
+    class Meta:
+        table = 'auth_oauth2'
+        unique_together = (('oauth_name', 'account_id'),)
