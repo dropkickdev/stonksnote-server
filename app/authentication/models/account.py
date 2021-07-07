@@ -12,7 +12,6 @@ from app.validation import UpdateGroupVM, UpdatePermissionVM
 from app.authentication.models.core import DTMixin, ActiveManager, SharedMixin, Option
 
 
-
 class UserMod(DTMixin, TortoiseBaseUserModel):
     username = fields.CharField(max_length=50, null=True)
     first_name = fields.CharField(max_length=191, default='')
@@ -23,7 +22,7 @@ class UserMod(DTMixin, TortoiseBaseUserModel):
     bday = fields.DateField(null=True)
     mobile = fields.CharField(max_length=50, default='')
     telephone = fields.CharField(max_length=50, default='')
-    avatar = fields.CharField(max_length=191, default='')
+    avatar = fields.CharField(max_length=255, default='')
     status = fields.CharField(max_length=20, default='')
     bio = fields.CharField(max_length=191, default='')
     address1 = fields.CharField(max_length=191, default='')
@@ -32,12 +31,17 @@ class UserMod(DTMixin, TortoiseBaseUserModel):
     zipcode = fields.CharField(max_length=20, default='')
     timezone = fields.CharField(max_length=10, default='+00:00')
     website = fields.CharField(max_length=20, default='')
-    last_login = fields.DatetimeField(null=True)
 
     groups = fields.ManyToManyField('models.Group', related_name='group_users',
                                     through='auth_user_groups', backward_key='user_id')
     permissions = fields.ManyToManyField('models.Permission', related_name='permission_users',
                                          through='auth_user_permissions', backward_key='user_id')
+
+    # Project-specific
+    brokers = fields.ManyToManyField('models.UserBroker', related_name='broker_users',
+                                     through='stocks_userbroker', backward_key='user_id')
+    equities = fields.ManyToManyField('models.Equity', related_name='equity_users',
+                                      through='stocks_userequity', backward_key='user_id')
 
     full = Manager()
 
@@ -52,15 +56,15 @@ class UserMod(DTMixin, TortoiseBaseUserModel):
     def fullname(self):
         return f'{self.first_name} {self.last_name}'.strip()
 
-    @property
-    async def display_name(self):
-        if self.username:
-            return self.username
-        elif self.fullname:
-            return self.fullname.split()[0]
-        else:
-            emailname = self.email.split('@')[0]
-            return ' '.join(emailname.split('.'))
+    # @property
+    # async def display_name(self):
+    #     if self.username:
+    #         return self.username
+    #     elif self.fullname:
+    #         return self.fullname.split()[0]
+    #     else:
+    #         emailname = self.email.split('@')[0]
+    #         return ' '.join(emailname.split('.'))
 
     # @classmethod
     # def has_perm(cls, id: str, *perms):
@@ -373,8 +377,6 @@ class Group(SharedMixin, models.Model):
         fields.ManyToManyField('models.Permission', related_name='groups',
                                through='auth_group_permissions', backward_key='group_id')
     
-    full = Manager()
-    
     class Meta:
         table = 'auth_group'
         manager = ActiveManager()
@@ -491,8 +493,6 @@ class Permission(SharedMixin, models.Model):
     
     # groups: fields.ReverseRelation[Group]
     # permission_users: fields.ReverseRelation['UserMod']
-    
-    full = Manager()
     
     class Meta:
         table = 'auth_permission'

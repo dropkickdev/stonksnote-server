@@ -12,6 +12,7 @@ DATABASE_MODELS = [
     'aerich.models',
     'app.authentication.models.core',
     'app.authentication.models.account',
+    'stocks.models',
     
     # *get_models_paths()
 ]
