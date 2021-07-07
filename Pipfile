@@ -1,0 +1,25 @@
+[[source]]
+url = "https://pypi.org/simple"
+verify_ssl = true
+name = "pypi"
+
+[packages]
+fastapi = "*"
+uvicorn = {extras = ["standard"], version = "*"}
+fastapi-users = {extras = ["oauth", "tortoise-orm"], version = "*"}
+tortoise-orm = {extras = ["asyncpg"], version = "*"}
+aerich = "*"
+python-dotenv = "*"
+limeutils = "*"
+aiomysql = "*"
+email-validator = "*"
+jinja2 = "*"
+
+[dev-packages]
+icecream = "*"
+pytest = "*"
+pytest-sugar = "*"
+requests = "*"
+
+[requires]
+python_version = "3.9"
