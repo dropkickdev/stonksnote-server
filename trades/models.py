@@ -21,6 +21,7 @@ class Broker(DTMixin, SharedMixin, models.Model):
     is_online = fields.BooleanField(default=True)
     is_active = fields.BooleanField(default=True)
     meta = fields.JSONField(null=True)
+    author = fields.ForeignKeyField('models.UserMod', related_name='author_brokers')
     
     class Meta:
         table = 'trades_broker'
@@ -36,8 +37,8 @@ class UserBroker(DTMixin, SharedMixin, models.Model):
     wallet = fields.DecimalField(max_digits=13, decimal_places=2, default=0)
     traded = fields.DecimalField(max_digits=13, decimal_places=2, default=0)
     status = fields.CharField(max_length=20)
-    meta = fields.JSONField(null=True)
     is_default = fields.BooleanField(default=True)
+    meta = fields.JSONField(null=True)
     
     class Meta:
         table = 'trades_userbroker'
@@ -54,8 +55,9 @@ class Member(DTMixin, SharedMixin, models.Model):
     founded = fields.DateField(null=True)
     country = fields.CharField(max_length=2, null=True)
     industry = fields.CharField(max_length=191, default='')
-    author = fields.ForeignKeyField('models.UserMod', related_name='author_member')
-    logo = fields.ForeignKeyField('models.Media', related_name='logo_member')
+    logo = fields.ForeignKeyField('models.Media', related_name='logo_members')
+    meta = fields.JSONField(null=True)
+    author = fields.ForeignKeyField('models.UserMod', related_name='author_members')
 
     class Meta:
         table = 'trades_member'
@@ -69,7 +71,7 @@ class Equity(DTMixin, SharedMixin, models.Model):
     symbol = fields.CharField(max_length=10)
     member = fields.ForeignKeyField('models.Member', related_name='member_equity')
     exchange = fields.ForeignKeyField('models.Taxonomy', related_name='exchange_equity')
-    type = fields.CharField(max_length=20)  # stock, index, forex, commodity, crypto, preferred
+    tier = fields.CharField(max_length=20)  # stock, index, forex, commodity, crypto, preferred
     opened = fields.DateField(null=True)
     starting = fields.DecimalField(max_digits=13, decimal_places=2, default=0)
     currency = fields.CharField(max_length=3)
@@ -103,8 +105,8 @@ class Trade(DTMixin, SharedMixin, models.Model):
 
     status = fields.DatetimeField(null=True)  # pending, resolved...I think
     note = fields.ForeignKeyField('models.Note', related_name='note_trades')
-    author = fields.ForeignKeyField('models.UserMod', related_name='author_trades')
     meta = fields.JSONField(null=True)
+    author = fields.ForeignKeyField('models.UserMod', related_name='author_trades')
 
     tags = fields.ManyToManyField('models.Taxonomy', related_name='tag_trades',
                                   through='trades_tags', backward_key='trade_id')
@@ -122,8 +124,8 @@ class Trade(DTMixin, SharedMixin, models.Model):
 
 class Collection(DTMixin, SharedMixin, models.Model):
     name = fields.CharField(max_length=191)
-    type = fields.CharField(max_length=20)
-    author = fields.ForeignKeyField('models.UserMod', related_name='author_collection')
+    tier = fields.CharField(max_length=20)
+    author = fields.ForeignKeyField('models.UserMod', related_name='author_collections')
 
     class Meta:
         table = 'trades_collection'
@@ -133,41 +135,7 @@ class Collection(DTMixin, SharedMixin, models.Model):
         return modstr(self, 'name')
 
 
-class Media(DTMixin, SharedMixin, models.Model):
-    path = fields.CharField(max_length=256)
-    filename = fields.CharField(max_length=199)
-    ext = fields.CharField(max_length=10)
-    width = fields.SmallIntField(null=True)
-    height = fields.SmallIntField(null=True)
-    size = fields.SmallIntField(null=True)
-    status = fields.CharField(max_length=20)        # Set original, modified, delete
 
-    is_active = fields.BooleanField(default=True)
-    author = fields.ForeignKeyField('models.UserMod', related_name='author_media')
-
-    class Meta:
-        table = 'trades_media'
-        manager = ActiveManager()
-
-    def __str__(self):
-        return modstr(self, f'{self.filename}.{self.ext}')
-
-
-class Note(DTMixin, SharedMixin, models.Model):
-    note = fields.TextField()
-    status = fields.CharField(max_length=20)
-    author = fields.ForeignKeyField('models.UserMod', related_name='author_notes')
-
-    class Meta:
-        table = 'trades_note'
-        manager = ActiveManager()
-
-    def __str__(self):
-        split = self.note.split()
-        words = 10
-        if len(split) >= words:
-            return f'{" ".join(split[:words])}...'
-        return self.note
 
 
 

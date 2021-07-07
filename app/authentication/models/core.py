@@ -57,8 +57,8 @@ class Option(SharedMixin, models.Model):
         return modstr(self, 'name')
 
 
-class UserHistory(models.Model):
-    user = fields.ForeignKeyField('models.UserMod', related_name='userhistory')
+class Visitor(models.Model):
+    user = fields.ForeignKeyField('models.UserMod', related_name='visitors')
     browser = fields.CharField(max_length=99)
     browser_fam = fields.CharField(max_length=99)
     browser_ver = fields.CharField(max_length=99)
@@ -76,6 +76,16 @@ class UserHistory(models.Model):
     last_login = fields.DatetimeField(auto_now_add=True)
     last_logout = fields.DatetimeField(null=True)
     meta = fields.JSONField(null=True)
+
+    updated_at = fields.DatetimeField(auto_now=True)
+    created_at = fields.DatetimeField(auto_now_add=True)
+
+    class Meta:
+        table = 'core_visitor'
+        manager = ActiveManager()
+
+    def __str__(self):
+        return modstr(self, 'user')
     
 
 class Taxonomy(DTMixin, SharedMixin, models.Model):
@@ -84,11 +94,11 @@ class Taxonomy(DTMixin, SharedMixin, models.Model):
     label = fields.CharField(max_length=191, default='')  # Longer version of name
     description = fields.CharField(max_length=191, default='')
     sort = fields.SmallIntField(default=100)
-    author = fields.ForeignKeyField('models.UserMod', related_name='tax_of_author')
-    parent = fields.ForeignKeyField('models.Taxonomy', related_name='tax_of_parent')
+    parent = fields.ForeignKeyField('models.Taxonomy', related_name='parent_taxs', null=True)
 
     is_verified = fields.BooleanField(default=True)
     is_locked = fields.BooleanField(default=False)
+    author = fields.ForeignKeyField('models.UserMod', related_name='author_taxs', null=True)
 
     class Meta:
         table = 'core_taxonomy'
@@ -127,9 +137,9 @@ class Taxonomy(DTMixin, SharedMixin, models.Model):
                 taxes = await cls.filter(tier=tier).values('id', 'name', 'description')
             return taxes
 
-    @classmethod
-    async def get_buy_stages(cls):
-        return await cls.get_tax('buy_stage')
+    # @classmethod
+    # async def get_buy_stages(cls):
+    #     return await cls.get_tax('buy_stage')
 
 
 # # class HashMod(SharedMixin, models.Model):
@@ -146,12 +156,11 @@ class Taxonomy(DTMixin, SharedMixin, models.Model):
 # #         return modstr(self, 'hash')
 
 
-class TokenMod(models.Model):
+class Token(models.Model):
     token = fields.CharField(max_length=128, unique=True)
     expires = fields.DatetimeField(index=True)
     is_blacklisted = fields.BooleanField(default=False)
-    author = fields.ForeignKeyField('models.UserMod', on_delete=fields.CASCADE,
-                                    related_name='author_tokens')
+    author = fields.ForeignKeyField('models.UserMod', related_name='author_tokens')
 
     full = Manager()
 
@@ -161,3 +170,42 @@ class TokenMod(models.Model):
 
     def __str__(self):
         return modstr(self, 'token')
+
+
+class Media(DTMixin, SharedMixin, models.Model):
+    path = fields.CharField(max_length=256)
+    filename = fields.CharField(max_length=199)
+    ext = fields.CharField(max_length=10)
+    width = fields.SmallIntField(null=True)
+    height = fields.SmallIntField(null=True)
+    size = fields.SmallIntField(null=True)
+    status = fields.CharField(max_length=20)        # Set original, modified, delete
+    
+    is_active = fields.BooleanField(default=True)
+    meta = fields.JSONField(null=True)
+    author = fields.ForeignKeyField('models.UserMod', related_name='author_media')
+    
+    class Meta:
+        table = 'core_media'
+        manager = ActiveManager()
+    
+    def __str__(self):
+        return modstr(self, f'{self.filename}.{self.ext}')
+
+
+class Note(DTMixin, SharedMixin, models.Model):
+    note = fields.TextField()
+    status = fields.CharField(max_length=20)
+    meta = fields.JSONField(null=True)
+    author = fields.ForeignKeyField('models.UserMod', related_name='author_notes')
+    
+    class Meta:
+        table = 'core_note'
+        manager = ActiveManager()
+    
+    def __str__(self):
+        split = self.note.split()
+        words = 10
+        if len(split) >= words:
+            return f'{" ".join(split[:words])}...'
+        return self.note

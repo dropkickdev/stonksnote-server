@@ -39,6 +39,9 @@ async def register_callback(user: UserDB, _: Response):
     user = await UserMod.get(pk=user.id).only('id', 'email')
     await user.groups.add(*groups)
     
+    # TODO: Add default collections
+    # TODO: Add defalt tags
+    
     if s.VERIFY_EMAIL:
         await send_registration_email(
             user,
