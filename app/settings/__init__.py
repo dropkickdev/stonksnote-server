@@ -19,5 +19,5 @@ class Settings:
 
 load_dotenv(override=True)
 
-env = os.getenv('ENV')
-settings = Settings(env)
+ENV = os.getenv('ENV')
+settings = Settings(ENV)

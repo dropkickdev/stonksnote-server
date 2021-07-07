@@ -3,15 +3,13 @@ from typing import List
 from pydantic import BaseSettings, Field, EmailStr
 from dotenv import load_dotenv
 
-
-
 load_dotenv(override=True)
 
 
 class Base(BaseSettings):
     DEBUG: bool = os.getenv('DEBUG')
     SITE_NAME: str = 'Stonksnote'
-    APPCODE: str = 'STONKS'    # No spaces
+    APPCODE: str = 'STONKS'  # No spaces
     
     # General
     SECRET_KEY: str = os.getenv('SECRET_KEY')
@@ -19,15 +17,15 @@ class Base(BaseSettings):
     USE_TZ: bool = True
     TIMEZONE: str = 'UTC'
     LANGUAGE_CODE: str = 'en-us'
-
+    
     # Authentication
     ALGORITHM: str = 'HS256'
-    ACCESS_TOKEN_EXPIRE: int = 60 * 15              # seconds (15 mins)
-    REFRESH_TOKEN_EXPIRE: int = 3600 * 24 * 15      # seconds (15 days)
-    REFRESH_TOKEN_CUTOFF: int = 30                  # minutes
-    SESSION_COOKIE_AGE: int = 3600 * 24 * 15        # seconds
-    VERIFY_EMAIL_TTL: int = 3600 * 3                # seconds
-    RESET_PASSWORD_TTL: int = 60 * 30               # seconds
+    ACCESS_TOKEN_EXPIRE: int = 60 * 15  # seconds (15 mins)
+    REFRESH_TOKEN_EXPIRE: int = 3600 * 24 * 15  # seconds (15 days)
+    REFRESH_TOKEN_CUTOFF: int = 30  # minutes
+    SESSION_COOKIE_AGE: int = 3600 * 24 * 15  # seconds
+    VERIFY_EMAIL_TTL: int = 3600 * 3  # seconds
+    RESET_PASSWORD_TTL: int = 60 * 30  # seconds
     
     # Database
     # Refer to app.settings.db.py
@@ -37,13 +35,15 @@ class Base(BaseSettings):
     CACHE_TTL: int = 3600 * 24 * 15
     CACHE_CONFIG: dict = {
         "default": {
-            'pre':  os.getenv('CACHE_PREFIX', APPCODE),
-            'ver':  os.getenv('CACHE_VERSION'),
-            'ttl':  os.getenv('CACHE_TTL', CACHE_TTL),
+            'pre': os.getenv('CACHE_PREFIX', APPCODE),
+            'ver': os.getenv('CACHE_VERSION'),
+            'ttl': os.getenv('CACHE_TTL', CACHE_TTL),
         }
     }
     CACHE_GROUPNAME: str = 'group-{}'
     CACHE_USERNAME: str = 'user-{}'
+    CACHE_TAXONOMY: str = 'taxonomy-{}-{}'
+    CACHE_TAXONOMY_SEARCH: str = 'taxonomy-{}-*'
     
     # Account
     USERNAME_MIN: int = Field(4, ge=4, le=10)
@@ -64,7 +64,8 @@ class Base(BaseSettings):
     NOTICE_HEADER: dict = {'X-Allow-Notice': 'true'}
     FORM_RESET_PASSWORD: str = os.getenv('FORM_RESET_PASSWORD', '/reset-password-form')
     NOTICE_VERIFY_REGISTER_OK: str = os.getenv('NOTICE_VERIFY_REGISTER_OK', '/n/verify-register-ok')
-    NOTICE_VERIFY_REGISTER_FAIL: str = os.getenv('NOTICE_VERIFY_REGISTER_FAIL', '/n/verify-register-fail')
+    NOTICE_VERIFY_REGISTER_FAIL: str = os.getenv('NOTICE_VERIFY_REGISTER_FAIL',
+                                                 '/n/verify-register-fail')
     NOTICE_TOKEN_EXPIRED: str = os.getenv('NOTICE_TOKEN_EXPIRED', '/n/token-expired')
     NOTICE_TOKEN_BAD: str = os.getenv('NOTICE_TOKEN_BAD', '/n/token-bad')
     NOTICE_USER_ALREADY_VERIFIED: str = os.getenv('NOTICE_USER_ALREADY_VERIFIED',
