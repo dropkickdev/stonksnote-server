@@ -124,7 +124,8 @@ class Trade(DTMixin, SharedMixin, models.Model):
 
 class Collection(DTMixin, SharedMixin, models.Model):
     name = fields.CharField(max_length=191)
-    tier = fields.CharField(max_length=20)
+    tier = fields.CharField(max_length=20)      # equity
+    is_global = fields.BooleanField(default=False)
     author = fields.ForeignKeyField('models.UserMod', related_name='author_collections')
 
     class Meta:

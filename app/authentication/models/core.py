@@ -97,7 +97,7 @@ class Taxonomy(DTMixin, SharedMixin, models.Model):
     parent = fields.ForeignKeyField('models.Taxonomy', related_name='parent_taxs', null=True)
 
     is_verified = fields.BooleanField(default=True)
-    is_locked = fields.BooleanField(default=False)
+    is_global = fields.BooleanField(default=False)
     author = fields.ForeignKeyField('models.UserMod', related_name='author_taxs', null=True)
 
     class Meta:
