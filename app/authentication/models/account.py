@@ -39,9 +39,7 @@ class UserMod(DTMixin, TortoiseBaseUserModel):
 
     # Project-specific
     brokers = fields.ManyToManyField('models.UserBroker', related_name='broker_users',
-                                     through='stocks_userbroker', backward_key='user_id')
-    equities = fields.ManyToManyField('models.Equity', related_name='equity_users',
-                                      through='stocks_userequity', backward_key='user_id')
+                                     through='trades_userbroker', backward_key='user_id')
 
     full = Manager()
 
@@ -376,7 +374,6 @@ class Group(SharedMixin, models.Model):
     permissions: models.ManyToManyRelation['Permission'] = \
         fields.ManyToManyField('models.Permission', related_name='groups',
                                through='auth_group_permissions', backward_key='group_id')
-    
     class Meta:
         table = 'auth_group'
         manager = ActiveManager()
@@ -547,7 +544,7 @@ class OAuthAccount(SharedMixin, models.Model):
     account_id = fields.CharField(index=True, max_length=255)
     account_email = fields.CharField(null=False, max_length=255)
     
-    # Don't change the related_name for this field. Fastapi-users uses it.
+    # Keep the related_name to "oauth_accounts". Fastapi-users uses it.
     user = fields.ForeignKeyField("models.UserMod", related_name="oauth_accounts")
     updated_at = fields.DatetimeField(auto_now=True)
     created_at = fields.DatetimeField(auto_now_add=True)
