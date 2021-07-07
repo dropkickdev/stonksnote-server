@@ -22,14 +22,10 @@ def get_app() -> FastAPI:
     app.include_router(demorouter, prefix='/demo', tags=['Development'])
     
     # Tortoise
-    register_tortoise(
-        app,
-        config=DATABASE,
-        generate_schemas=True,
-    )
+    register_tortoise(app, config=DATABASE, generate_schemas=True)
 
     # CORS
-    origins = ['http://localhost:3000', 'http://127.0.0.1:3000']
+    origins = ['http://localhost:3000', 'https://localhost:3000']
     app.add_middleware(
         CORSMiddleware, allow_origins=origins, allow_credentials=True,
         allow_methods=["*"], allow_headers=["*"],
