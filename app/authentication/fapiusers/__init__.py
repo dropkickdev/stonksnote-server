@@ -12,11 +12,11 @@ class TortoiseUDB(TortoiseUserDatabase):
     # Fields from UserDB
     starter_fields = ['id', 'hashed_password', 'email', 'is_active', 'is_superuser', 'is_verified']
     
-    def __init__(self, *args, include: Optional[list] = None, alternate=None, **kwargs):
+    def __init__(self, *args, include: Optional[list] = None, alt=None, **kwargs):
         include = include or []
         self.select_fields = {*self.starter_fields, *include}
         super().__init__(*args, **kwargs)
-        self.usercomplete = alternate or self.user_db_model
+        self.usercomplete = alt or self.user_db_model
     
     async def get(self, id: UUID4) -> Optional[UD]:     # noqa
         partialkey = s.CACHE_USERNAME.format(str(id))
