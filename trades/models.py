@@ -136,8 +136,16 @@ class Collection(DTMixin, SharedMixin, models.Model):
         return modstr(self, 'name')
 
 
+class Mark(DTMixin, SharedMixin, models.Model):
+    symbol = fields.CharField(max_length=10)
+    title = fields.ForeignKeyField('models.Taxonomy', related_name='marks', null=True)
+    is_active = fields.BooleanField(default=True)
+    meta = fields.JSONField(null=True)
+    author = fields.ForeignKeyField('models.UserMod', related_name='author_marks')
 
-
+    class Meta:
+        table = 'trades_mark'
+        manager = ActiveManager()
 
 
 

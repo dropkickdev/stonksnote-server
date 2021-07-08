@@ -1,11 +1,21 @@
 
 
-collection_list = [
-    dict(name='Shortlist', tier='equity', is_global=True),
-    dict(name='Active', tier='equity', is_global=True),
+collection_default = [
+    dict(name='Shortlist', tier='equity'),
+    dict(name='Active', tier='equity'),
+    dict(name='Mark', tier='equity'),           # A special type of
 ]
 
-taxonomy_dict = {
+# taxonomy_default = [
+#     # Tags
+#     dict(name='recommended'),
+#     dict(name='not-now'),
+#     dict(name='invest-soon'),
+# ]
+
+taxonomy_heads = ['mark_header', 'exchange', 'tags']
+
+taxonomy_global = {
     'exchange': [
         dict(name='PSE', label='Philippine Stock Exchange', is_global=True),
         dict(name='SGX', label='Singapore Exchange', is_global=True),
@@ -17,11 +27,6 @@ taxonomy_dict = {
         dict(name='FX', label='Forex', is_global=True),
         dict(name='CRYPTO', label='Cryptocurrency', is_global=True),
     ],
-    'trade_tags': [
-        dict(name='recommended', is_global=True),
-        dict(name='not-now', is_global=True),
-        dict(name='invest-soon', is_global=True),
-    ]
     # 'stages': {
     #     'buy_stage': [
     #         dict(label='Buying', is_global=True, description='The buying process'),
