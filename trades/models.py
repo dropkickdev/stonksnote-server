@@ -68,15 +68,16 @@ class Member(DTMixin, SharedMixin, models.Model):
 
 
 class Equity(DTMixin, SharedMixin, models.Model):
-    symbol = fields.CharField(max_length=10)
+    ticker = fields.CharField(max_length=10)
     member = fields.ForeignKeyField('models.Member', related_name='member_equity')
+    sector = fields.ForeignKeyField('models.Taxonomy', related_name='sector_equity')
+    industry = fields.ForeignKeyField('models.Taxonomy', related_name='industry_equity', null=True)
+    
     exchange = fields.ForeignKeyField('models.Taxonomy', related_name='exchange_equity')
-    tier = fields.CharField(max_length=20)  # stock, index, forex, commodity, crypto, preferred
-    opened = fields.DateField(null=True)
-    starting = fields.DecimalField(max_digits=13, decimal_places=2, default=0)
+    category = fields.CharField(max_length=20)  # stock, index, forex, commodity, crypto, preferred
     currency = fields.CharField(max_length=3)
-    country = fields.CharField(max_length=2, default='')
-    stage = fields.ForeignKeyField('models.Taxonomy', related_name='stage_equity', null=True)
+    
+    # stage = fields.ForeignKeyField('models.Taxonomy', related_name='stage_equity', null=True)
     status = fields.CharField(max_length=20)        # active, suspended, etc
     meta = fields.JSONField(null=True)
     author = fields.ForeignKeyField('models.UserMod', related_name='author_equity')
@@ -91,13 +92,36 @@ class Equity(DTMixin, SharedMixin, models.Model):
         return modstr(self, 'code')
 
     
+class EquityHistory(DTMixin, SharedMixin, models.Model):
+    equity = fields.ForeignKeyField('models.Equity', related_name='equityhistory')
+    open = fields.DecimalField(max_digits=15, decimal_places=4, null=True)
+    close = fields.DecimalField(max_digits=15, decimal_places=4, null=True)
+    high = fields.DecimalField(max_digits=15, decimal_places=4, null=True)
+    low = fields.DecimalField(max_digits=15, decimal_places=4, null=True)
+    volume = fields.DecimalField(max_digits=15, decimal_places=4, null=True)
+    value = fields.DecimalField(max_digits=15, decimal_places=4, null=True)
+    marketcap = fields.DecimalField(max_digits=21, decimal_places=4, null=True)
+    trades = fields.DecimalField(max_digits=15, decimal_places=0, null=True)
+    
+    
+    todate = fields.JSONField(null=True)        # wtd, mtd, ytd
+    sma = fields.JSONField(null=True)
+    rsi = fields.JSONField(null=True)
+    macd = fields.JSONField(null=True)
+    atr = fields.JSONField(null=True)
+    cci = fields.JSONField(null=True)
+    sts = fields.JSONField(null=True)
+
+    meta = fields.JSONField(null=True)
+
+
 class Trade(DTMixin, SharedMixin, models.Model):
     user = fields.ForeignKeyField('models.UserMod', related_name='trades')
     equity = fields.ForeignKeyField('models.Equity', related_name='trades')
     broker = fields.ForeignKeyField('models.Broker', related_name='trades')
 
     action = fields.CharField(max_length=20)    # buy, sell
-    pershare = fields.DecimalField(max_digits=12, decimal_places=4, default=0)
+    marketprice = fields.DecimalField(max_digits=12, decimal_places=4, default=0)
     shares = fields.IntField(default=0)
     gross = fields.DecimalField(max_digits=12, decimal_places=4, default=0)
     fees = fields.DecimalField(max_digits=12, decimal_places=4, default=0)
@@ -124,7 +148,7 @@ class Trade(DTMixin, SharedMixin, models.Model):
 
 class Collection(DTMixin, SharedMixin, models.Model):
     name = fields.CharField(max_length=191)
-    tier = fields.CharField(max_length=20)      # equity
+    category = fields.CharField(max_length=20)      # equity
     is_global = fields.BooleanField(default=False)
     author = fields.ForeignKeyField('models.UserMod', related_name='author_collections')
 
@@ -139,14 +163,15 @@ class Collection(DTMixin, SharedMixin, models.Model):
 class Mark(DTMixin, SharedMixin, models.Model):
     symbol = fields.CharField(max_length=10)
     title = fields.ForeignKeyField('models.Taxonomy', related_name='marks', null=True)
-    is_active = fields.BooleanField(default=True)
+    expires = fields.DateField()
+    
     meta = fields.JSONField(null=True)
+    is_active = fields.BooleanField(default=True)
     author = fields.ForeignKeyField('models.UserMod', related_name='author_marks')
 
     class Meta:
         table = 'trades_mark'
         manager = ActiveManager()
-
 
 
 

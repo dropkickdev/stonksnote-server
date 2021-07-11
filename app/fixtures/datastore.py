@@ -3,7 +3,6 @@
 collection_default = [
     dict(name='Shortlist', tier='equity'),
     dict(name='Active', tier='equity'),
-    dict(name='Mark', tier='equity'),           # A special type of
 ]
 
 # taxonomy_default = [
@@ -13,7 +12,7 @@ collection_default = [
 #     dict(name='invest-soon'),
 # ]
 
-taxonomy_heads = ['mark_header', 'exchange', 'tags']
+taxonomy_heads = ['markheader', 'exchange', 'tags', 'sector', 'industry']
 
 taxonomy_global = {
     'exchange': [
@@ -27,6 +26,8 @@ taxonomy_global = {
         dict(name='FX', label='Forex', is_global=True),
         dict(name='CRYPTO', label='Cryptocurrency', is_global=True),
     ],
+    'sector': [],
+    'industry': [],
     # 'stages': {
     #     'buy_stage': [
     #         dict(label='Buying', is_global=True, description='The buying process'),
