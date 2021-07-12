@@ -30,7 +30,17 @@ tokenonly = OAuth2PasswordBearer(tokenUrl='token')
 REFRESH_TOKEN_KEY = 'refresh_token'         # Don't change this. This is hard-coded as a variable.
 
 
-def register_callback(user: UserDB, _: Request):
+async def register_callback(user: UserDB, _: Request):
+    # TODO: Add default collections
+    # TODO: Add defalt tags
+    # TODO: Create display field value
+    usermod = await UserMod.get_or_none(pk=user.id).only('id', 'display')
+    ic(await usermod.to_dict())
+    
+    # my.name@email.com => myname
+    usermod.display = ''.join((user.email.split('@')[0]).split('.'))
+    await usermod.save(update_fields=['display'])
+    
     ic(f'Registration complete by {user.email}')
 
 
@@ -60,8 +70,6 @@ def after_reset_password(user: UserDB, _: Request):
 #     user = await UserMod.get(pk=user.id).only('id', 'email')
 #     await user.groups.add(*groups)
 #
-#     # TODO: Add default collections
-#     # TODO: Add defalt tags
 #
 #     if s.VERIFY_EMAIL:
 #         await send_registration_email(

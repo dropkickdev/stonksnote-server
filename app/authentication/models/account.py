@@ -13,7 +13,8 @@ from app.authentication.models.core import DTMixin, ActiveManager, SharedMixin, 
 
 
 class UserMod(DTMixin, TortoiseBaseUserModel):
-    username = fields.CharField(max_length=50, null=True)
+    username = fields.CharField(max_length=50, default='')
+    display = fields.CharField(max_length=50, default='')
     first_name = fields.CharField(max_length=191, default='')
     middle_name = fields.CharField(max_length=191, default='')
     last_name = fields.CharField(max_length=191, default='')

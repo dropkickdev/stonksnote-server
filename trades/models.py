@@ -48,7 +48,7 @@ class UserBroker(DTMixin, SharedMixin, models.Model):
         return modstr(self, 'broker')
 
 
-class Member(DTMixin, SharedMixin, models.Model):
+class Owner(DTMixin, SharedMixin, models.Model):
     name = fields.CharField(max_length=191)
     description = fields.CharField(max_length=191)
     website = fields.CharField(max_length=191)
@@ -64,12 +64,12 @@ class Member(DTMixin, SharedMixin, models.Model):
         manager = ActiveManager()
 
     def __str__(self):
-        return modstr(self, 'code')
+        return modstr(self, 'name')
 
 
 class Equity(DTMixin, SharedMixin, models.Model):
     ticker = fields.CharField(max_length=10)
-    member = fields.ForeignKeyField('models.Member', related_name='member_equity')
+    member = fields.ForeignKeyField('models.Owner', related_name='member_equity')
     sector = fields.ForeignKeyField('models.Taxonomy', related_name='sector_equity')
     industry = fields.ForeignKeyField('models.Taxonomy', related_name='industry_equity', null=True)
     
@@ -89,30 +89,30 @@ class Equity(DTMixin, SharedMixin, models.Model):
         manager = ActiveManager()
         
     def __str__(self):
-        return modstr(self, 'code')
+        return modstr(self, 'ticker')
 
     
-class EquityHistory(DTMixin, SharedMixin, models.Model):
-    equity = fields.ForeignKeyField('models.Equity', related_name='equityhistory')
-    open = fields.DecimalField(max_digits=15, decimal_places=4, null=True)
-    close = fields.DecimalField(max_digits=15, decimal_places=4, null=True)
-    high = fields.DecimalField(max_digits=15, decimal_places=4, null=True)
-    low = fields.DecimalField(max_digits=15, decimal_places=4, null=True)
-    volume = fields.DecimalField(max_digits=15, decimal_places=4, null=True)
-    value = fields.DecimalField(max_digits=15, decimal_places=4, null=True)
-    marketcap = fields.DecimalField(max_digits=21, decimal_places=4, null=True)
-    trades = fields.DecimalField(max_digits=15, decimal_places=0, null=True)
-    
-    
-    todate = fields.JSONField(null=True)        # wtd, mtd, ytd
-    sma = fields.JSONField(null=True)
-    rsi = fields.JSONField(null=True)
-    macd = fields.JSONField(null=True)
-    atr = fields.JSONField(null=True)
-    cci = fields.JSONField(null=True)
-    sts = fields.JSONField(null=True)
-
-    meta = fields.JSONField(null=True)
+# class EquityHistory(DTMixin, SharedMixin, models.Model):
+#     equity = fields.ForeignKeyField('models.Equity', related_name='equityhistory')
+#     open = fields.DecimalField(max_digits=15, decimal_places=4, null=True)
+#     close = fields.DecimalField(max_digits=15, decimal_places=4, null=True)
+#     high = fields.DecimalField(max_digits=15, decimal_places=4, null=True)
+#     low = fields.DecimalField(max_digits=15, decimal_places=4, null=True)
+#     volume = fields.DecimalField(max_digits=15, decimal_places=4, null=True)
+#     value = fields.DecimalField(max_digits=15, decimal_places=4, null=True)
+#     marketcap = fields.DecimalField(max_digits=21, decimal_places=4, null=True)
+#     trades = fields.DecimalField(max_digits=15, decimal_places=0, null=True)
+#
+#
+#     todate = fields.JSONField(null=True)        # wtd, mtd, ytd
+#     sma = fields.JSONField(null=True)
+#     rsi = fields.JSONField(null=True)
+#     macd = fields.JSONField(null=True)
+#     atr = fields.JSONField(null=True)
+#     cci = fields.JSONField(null=True)
+#     sts = fields.JSONField(null=True)
+#
+#     meta = fields.JSONField(null=True)
 
 
 class Trade(DTMixin, SharedMixin, models.Model):
