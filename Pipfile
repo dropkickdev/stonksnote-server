@@ -14,6 +14,7 @@ limeutils = "*"
 aiomysql = "*"
 email-validator = "*"
 jinja2 = "*"
+google-auth = "*"
 
 [dev-packages]
 icecream = "*"

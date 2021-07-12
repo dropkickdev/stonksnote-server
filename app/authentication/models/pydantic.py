@@ -52,6 +52,7 @@ class UserDB(User, models.BaseUserDB, PydanticModel):
     display: Optional[str] = ''
     timezone: Optional[str] = Field(s.USER_TIMEZONE, max_length=10)
     is_verified = s.AUTO_VERIFY
+    avatar: Optional[str] = ''
     
     # @validator('fieldname', pre=True, always=True)
     # def demo(cls, val):

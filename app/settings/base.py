@@ -53,6 +53,7 @@ class Base(BaseSettings):
     VERIFY_EMAIL: bool = True
     EMAIL_SENDER: EmailStr = 'accounts@stonksnote.com'
     USER_TIMEZONE: str = os.getenv('USER_TIMEZONE', '+08:00')
+    GOOGLE_CLIENT_ID: str = '347443539141-letq5qq8u0u7e26bas93m36pcrpats2b.apps.googleusercontent.com'
     
     # Email
     EMAIL_PORT: int = os.getenv('EMAIL_PORT')

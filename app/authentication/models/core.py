@@ -156,13 +156,11 @@ class Taxonomy(DTMixin, SharedMixin, models.Model):
 # #         return modstr(self, 'hash')
 
 
-class Token(models.Model):
+class Token(DTMixin, SharedMixin, models.Model):
     token = fields.CharField(max_length=128, unique=True)
     expires = fields.DatetimeField(index=True)
     is_blacklisted = fields.BooleanField(default=False)
     author = fields.ForeignKeyField('models.UserMod', related_name='author_tokens')
-
-    full = Manager()
 
     class Meta:
         table = 'auth_token'

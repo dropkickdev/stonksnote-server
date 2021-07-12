@@ -20,7 +20,7 @@ from .authentication.fapiusers import *
 
 
 
-userdb = TortoiseUDB(UserDB, UserMod, include=['timezone', 'display'], alt=UserDBComplete)
+userdb = TortoiseUDB(UserDB, UserMod, include=['timezone', 'display', 'avatar'], alt=UserDBComplete)
 jwtauth = JWTAuthentication(secret=s.SECRET_KEY, lifetime_seconds=s.ACCESS_TOKEN_EXPIRE)
 fusers = FastAPIUsers(userdb, [jwtauth], User, UserCreate, UserUpdate, UserDB)
 
@@ -35,7 +35,6 @@ async def register_callback(user: UserDB, _: Request):
     # TODO: Add defalt tags
     # TODO: Create display field value
     usermod = await UserMod.get_or_none(pk=user.id).only('id', 'display')
-    ic(await usermod.to_dict())
     
     # my.name@email.com => myname
     usermod.display = ''.join((user.email.split('@')[0]).split('.'))
@@ -59,6 +58,32 @@ def after_forgot_password(user: UserDB, token: str, _: Request):
 def after_reset_password(user: UserDB, _: Request):
     ic(f'Password reset complete for {user.email}')
 
+
+async def generate_token(user: UserDB, *, create: bool = True,
+                         token: Optional[Token] = None, usermod: Optional[UserMod] = None):
+    usermod = usermod or await UserMod.get(pk=user.id).only('id')
+    token_hash = secrets.token_hex(nbytes=32)
+    expires = datetime.now(tz=pytz.UTC) + timedelta(seconds=s.REFRESH_TOKEN_EXPIRE)
+    if create:
+        await Token.create(token=token_hash, expires=expires, author=usermod, is_blacklisted=False)
+    else:
+        token = token or (
+            await Token.get(author=usermod, is_blacklisted=False).only('id', 'token', 'expires')
+        )
+        token.token = token_hash
+        token.expires = expires
+        await token.save(update_fields=['token', 'expires'])
+        
+    return {
+        'value': token_hash,
+        'expires': expires,
+    }
+
+async def create_oauth(provider: str, id: str, email: str, usermod: UserMod):
+    if not (email == EmailStr(email)):
+        raise ValueError('Not a valid email')
+    oauth_d = dict(oauth_name=provider, account_id=id, account_email=email, user=usermod)
+    return await OAuthAccount.create(**oauth_d)
 
 # async def register_callback(user: UserDB, _: Response):
 #     """
@@ -151,78 +176,60 @@ def after_reset_password(user: UserDB, _: Request):
 #
 # def generate_refresh_token(nbytes: int = 32):
 #     return secrets.token_hex(nbytes=nbytes)
-#
-#
-# async def create_refresh_token(user) -> dict:
-#     """
-#     Create and save a new refresh token
-#     :param user Pydantic model for the user
-#     """
-#     user = await UserMod.get(pk=user.id).only('id')
-#     refresh_token = generate_refresh_token()
-#     expires = datetime.now(tz=pytz.UTC) + timedelta(seconds=s.REFRESH_TOKEN_EXPIRE)
-#
-#     await TokenMod.create(token=refresh_token, expires=expires, author=user)
-#     return {
-#         'value': refresh_token,
-#         'expires': expires,
-#     }
-#
-#
-# async def update_refresh_token(user, token: TokenMod = None) -> dict:
-#     """
-#     Update the refresh token of the user
-#     :param user     Pydantic model for the user
-#     :param token    Use an existing TokenMod instance if there is one and save a query
-#     """
-#     refresh_token = generate_refresh_token()
-#     expires = datetime.now(tz=pytz.UTC) + timedelta(seconds=s.REFRESH_TOKEN_EXPIRE)
-#
-#     if not token:
-#         token = await TokenMod.get(author_id=user.id, is_blacklisted=False) \
-#             .only('id', 'token', 'expires')
-#
-#     token.token = refresh_token
-#     token.expires = expires
-#     await token.save(update_fields=['token', 'expires'])
-#     return {
-#         'value': refresh_token,
-#         'expires': expires,
-#     }
-#
-#
-# def refresh_cookie(name: str, token: dict, **kwargs):
-#     if token['expires'] <= datetime.now(tz=pytz.UTC):
-#         raise ValueError('Cookie expires date must be greater than the date now')
-#
-#     expires = token['expires'] - datetime.now(tz=pytz.UTC)
-#     cookie_data = {
-#         'key': name,
-#         'value': token['value'],
-#         'httponly': True,
-#         'expires': expires.seconds,
-#         'path': '/',
-#         **kwargs,
-#     }
-#     if not s.DEBUG:
-#         cookie_data.update({
-#             'secure': True
-#         })
-#     return cookie_data
-#
-#
-# def time_difference(expires: datetime, now: datetime = None):
-#     """Get the diff between 2 dates"""
-#     now = now or datetime.now(tz=pytz.UTC)
-#     diff = expires - now
-#     return {
-#         'days': diff.days,
-#         'hours': int(diff.total_seconds()) // 3600,
-#         'minutes': int(diff.total_seconds()) // 60,
-#         'seconds': int(diff.total_seconds()),
-#     }
-#
-#
-# def expires(expires: datetime, units: str = 'minutes'):
-#     diff = time_difference(expires)
-#     return diff[units]
+
+
+# TESTME: Test manually
+async def create_refresh_token(user: UserDB, usermod: Optional[UserMod] = None) -> dict:
+    """
+    Create and save a new refresh token
+    :param user     Pydantic model for the user
+    :param usermod  UserMod if there is one
+    """
+    return await generate_token(user, usermod=usermod)
+
+# TESTME: Test manually
+async def update_refresh_token(user: UserDB, token: Optional[Token] = None,
+                               usermod: Optional[UserMod] = None) -> dict:
+    """
+    Update the refresh token of the user
+    :param user     Pydantic model for the user
+    :param token    Use an existing Token instance if there is one and save a query
+    :param usermod  UserMod if there is one
+    """
+    return await generate_token(user, create=False, token=token, usermod=usermod)
+
+
+def refresh_cookie(name: str, token: dict, **kwargs):
+    if token['expires'] <= datetime.now(tz=pytz.UTC):
+        raise ValueError('Cookie expires date must be greater than the date now')
+    
+    cookie_data = {
+        'key': name,
+        'value': token['value'],
+        'httponly': True,
+        'expires': s.REFRESH_TOKEN_EXPIRE,
+        'path': '/',
+        **kwargs,
+    }
+    if not s.DEBUG:
+        cookie_data.update({
+            'secure': True
+        })
+    return cookie_data
+
+
+def time_difference(expires: datetime, now: datetime = None):
+    """Get the diff between 2 dates"""
+    now = now or datetime.now(tz=pytz.UTC)
+    diff = expires - now
+    return {
+        'days': diff.days,
+        'hours': int(diff.total_seconds()) // 3600,
+        'minutes': int(diff.total_seconds()) // 60,
+        'seconds': int(diff.total_seconds()),
+    }
+
+
+def expires(expires: datetime, units: str = 'minutes'):
+    diff = time_difference(expires)
+    return diff[units]

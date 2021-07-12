@@ -1,5 +1,7 @@
-import jwt
+import jwt, secrets
 from typing import Optional, cast
+from datetime import datetime, timedelta
+from operator import itemgetter
 from fastapi import APIRouter, Response, Depends, HTTPException, status, Body, Cookie
 from fastapi.security import OAuth2PasswordRequestForm
 from fastapi_users.router.common import ErrorCode
@@ -11,16 +13,22 @@ from fastapi_users.password import get_password_hash
 from tortoise.exceptions import DoesNotExist
 from starlette.responses import RedirectResponse
 from pydantic import EmailStr, UUID4
+from google.oauth2 import id_token
+from google.auth.exceptions import GoogleAuthError
+from google.auth.transport import requests
 
 from app import ic, red, exceptions as x
 from app.settings import settings as s
 from app.auth import (
-    userdb, fusers, jwtauth, current_user, UserDB, Token, UserMod,
+    userdb, fusers, jwtauth, current_user, User, UserDB, Token, UserMod, OAuthAccount,
     REFRESH_TOKEN_KEY, ResetPasswordVM,
-    register_callback, after_verification_request, verification_complete
-    # update_refresh_token, create_refresh_token, refresh_cookie, send_password_email,
-    # expires
+    register_callback, after_verification_request, verification_complete,
+    update_refresh_token, create_refresh_token,
+    # refresh_cookie, send_password_email,
+    expires, generate_token, refresh_cookie, create_oauth,
 )
+from app.exceptions import PermissionDenied
+
 
 
 authrouter = APIRouter()
@@ -40,22 +48,147 @@ authrouter.include_router(fusers.get_verify_router(s.SECRET_KEY_EMAIL,
 # )
 
 
+
+@authrouter.get('/reload_user_data')
+async def get_user_data(_: Response, user=Depends(current_user)):
+    ic(user)
+    return {
+        'display': user.display,
+        'email': user.email,
+        'is_verified': user.is_verified,
+        'avatar': user.avatar
+    }
+
+
+# TODO: ATM you will have to test this manually.
+@authrouter.post('/token')
+async def new_access_token(response: Response, refresh_token: Optional[str] = Cookie(None)):
+    """
+    Create a new access_token with the refresh_token cookie. If the refresh_token is still valid
+    then a new access_token is generated. If it's expired then it is equivalent to being logged out.
+
+    The refresh_token is renewed for every login to prevent accidental logouts.
+    """
+    try:
+        # ic(refresh_token)
+        if refresh_token is None:
+            raise PermissionDenied()
+        
+        # TODO: Access the cache instead of querying it
+        token = await Token.get(token=refresh_token, is_blacklisted=False) \
+            .only('id', 'token', 'expires', 'author_id')
+        user = await userdb.get(token.author_id)
+        # ic(type(user), user)
+        
+        mins = expires(token.expires)
+        # ic(type(mins), mins)
+        # mins = 3
+        if mins <= 0:
+            raise PermissionDenied()
+        elif mins <= s.REFRESH_TOKEN_CUTOFF:
+            # refresh the refresh_token anyway before it expires
+            try:
+                token_dict = await update_refresh_token(user, token=token)
+            except DoesNotExist:
+                token_dict = await create_refresh_token(user)
+            
+            # Generate a new cookie
+            cookie = refresh_cookie(REFRESH_TOKEN_KEY, token_dict)
+            response.set_cookie(**cookie)
+        
+        return await jwtauth.get_login_response(user, response)
+    
+    except (PermissionDenied):
+        # Similar to logging out
+        del response.headers['authorization']
+        response.delete_cookie(REFRESH_TOKEN_KEY)
+        raise x.PermissionDenied()
+
+
+@authrouter.post('/google/login')
+async def google_login(response: Response, token: str = Body(...)):
+    try:
+        data = id_token.verify_oauth2_token(token, requests.Request(), s.GOOGLE_CLIENT_ID)
+        # ic(data)
+        email, sub, name, picture = itemgetter('email', 'sub', 'name', 'picture')(data)
+        
+        if await UserMod.exists(email=email):
+            # User exists
+            usermod = await UserMod.get(email=email).only('id', 'is_verified', 'display', 'avatar')
+            if not usermod.avatar:
+                usermod.avatar = picture
+                await usermod.save(update_fields=['avatar'])
+            if not await OAuthAccount.exists(oauth_name='google', user=usermod):
+                await create_oauth('google', sub, email, usermod)
+        else:
+            # New user
+            filler = secrets.token_hex(nbytes=32)
+            display = ''.join((email.split('@')[0]).split('.'))
+            usermod_d = dict(email=email, hashed_password=filler, is_verified=True,
+                             avatar=picture, display=display)
+            usermod = await UserMod.create(**usermod_d)
+            await create_oauth('google', sub, email, usermod)
+
+        user = UserDB(**await usermod.to_dict())
+        # user = UserDB(id=usermod.id, is_verified=True, display=usermod.display)
+        try:
+            token_dict = await update_refresh_token(user, usermod=usermod)
+        except DoesNotExist:
+            token_dict = await create_refresh_token(user, usermod=usermod)
+
+        # Generate a new cookie
+        cookie = refresh_cookie(REFRESH_TOKEN_KEY, token_dict)
+        response.set_cookie(**cookie)
+        
+        data = {
+            'display': user.display,
+            'email': user.email,
+            'is_verified': user.is_verified,
+            'avatar': user.avatar,
+            **await jwtauth.get_login_response(user, response),
+        }
+        return data
+    except GoogleAuthError:
+        raise GoogleAuthError()
+
+
+
 @authrouter.post("/login")
 async def login(response: Response, credentials: OAuth2PasswordRequestForm = Depends()):
+    # user = await fusers.db.authenticate(credentials)
     user = await userdb.authenticate(credentials)
-    
-    if user is None or not user.is_active:
+    ic(type(user), user)
+
+    if user is None or not user.is_active or not user.is_verified:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=ErrorCode.LOGIN_BAD_CREDENTIALS,
         )
-    requires_verification = True
-    if requires_verification and not user.is_verified:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=ErrorCode.LOGIN_USER_NOT_VERIFIED,
-        )
-    return await jwtauth.get_login_response(user, response)
+
+    try:
+        token_dict = await update_refresh_token(user)
+    except DoesNotExist:
+        token_dict = await create_refresh_token(user)
+
+    cookie = refresh_cookie(REFRESH_TOKEN_KEY, token_dict)
+    response.set_cookie(**cookie)
+
+    partialkey = s.CACHE_USERNAME.format(user.id)
+    if not red.exists(partialkey):
+        await UserMod.get_and_cache(user.id)
+        
+    usermod = await UserMod.get(pk=user.id).only('id', 'display', 'email', 'avatar', 'is_verified')
+    data = {
+        'display': usermod.display,
+        'email': usermod.email,
+        'is_verified': usermod.is_verified,
+        'avatar': usermod.avatar,
+        **await jwtauth.get_login_response(user, response),
+    }
+    if not user.is_verified:
+        data.update(dict(details='User is not verified yet so user cannot log in.'))
+    ic(data)
+    return data
 
 
 @authrouter.get("/logout")
@@ -67,43 +200,6 @@ async def logout(response: Response):
     response.delete_cookie('refresh_token')
     return
 
-
-# @authrouter.post('/google/login')
-# async def google_login(response: Response, token: str = Body(...)):
-#     try:
-#         data = id_token.verify_oauth2_token(token, requests.Request(), GOOGLE_CLIENT_ID)
-#         # ic(data)
-#         email, sub, name, picture = itemgetter('email', 'sub', 'name', 'picture')(data)
-#
-#         if await UserMod.exists(email=email):
-#             # User exists
-#             usermod = await UserMod.get(email=email).only('id', 'is_verified')
-#             if not await OAuthAccount.exists(oauth_name='google', user=usermod):
-#                 await create_oauth('google', sub, email, usermod)
-#         else:
-#             # New user
-#             filler = generate_token().get('value')
-#             usermod_d = dict(email=email, hashed_password=filler, is_verified=True, avatar=picture)
-#             usermod = await UserMod.create(**usermod_d)
-#             await create_oauth('google', sub, email, usermod)
-#
-#         token = generate_token()
-#         cookie = refresh_cookie('refresh_token', token)
-#         response.set_cookie(**cookie)
-#
-#         user = User(id=usermod.id, is_verified=True)
-#         d = {
-#             **await jwtauth.get_login_response(user, response),
-#             'is_verified': user.is_verified,
-#             'avatar': picture,
-#             # 'display': user.display,
-#         }
-#         return d
-#
-#     except GoogleAuthError:
-#         raise GoogleAuthError()
-#
-#
 # @authrouter.post('/facebook/login')
 # async def facebook_login(response: Response, data: dict = Body(...)):
 #     # ic(type(data), data)
@@ -140,85 +236,9 @@ async def logout(response: Response):
 
 
 
-# ATM you will have to test this manually.
-# @authrouter.post('/token')
-# async def new_access_token(response: Response, refresh_token: Optional[str] = Cookie(None)):
-#     """
-#     Create a new access_token with the refresh_token cookie. If the refresh_token is still valid
-#     then a new access_token is generated. If it's expired then it is equivalent to being logged out.
-#
-#     The refresh_token is renewed for every login to prevent accidental logouts.
-#     """
-#     try:
-#         if refresh_token is None:
-#             raise Exception
-#
-#         # TODO: Access the cache instead of querying it
-#         token = await Token.get(token=refresh_token, is_blacklisted=False) \
-#             .only('id', 'token', 'expires', 'author_id')
-#         user = await userdb.get(token.author_id)
-#
-#         mins = expires(token.expires)
-#         if mins <= 0:
-#             raise Exception
-#         elif mins <= s.REFRESH_TOKEN_CUTOFF:
-#             # refresh the refresh_token anyway before it expires
-#             try:
-#                 token = await update_refresh_token(user, token=token)
-#             except DoesNotExist:
-#                 token = await create_refresh_token(user)
-#
-#             # Generate a new cookie
-#             cookie = refresh_cookie(REFRESH_TOKEN_KEY, token)
-#             response.set_cookie(**cookie)
-#
-#         return await jwtauth.get_login_response(user, response)
-#
-#     except Exception:
-#         del response.headers['authorization']
-#         response.delete_cookie(REFRESH_TOKEN_KEY)
-#         raise x.PermissionDenied()
-#
-#
-# @authrouter.post("/login")
-# async def login(response: Response, credentials: OAuth2PasswordRequestForm = Depends()):
-#     user = await fapiuser.db.authenticate(credentials)
-#
-#     if user is None or not user.is_active or not user.is_verified:
-#         raise HTTPException(
-#             status_code=status.HTTP_400_BAD_REQUEST,
-#             detail=ErrorCode.LOGIN_BAD_CREDENTIALS,
-#         )
-#
-#     try:
-#         token = await update_refresh_token(user)
-#     except DoesNotExist:
-#         token = await create_refresh_token(user)
-#
-#     cookie = refresh_cookie(REFRESH_TOKEN_KEY, token)
-#     response.set_cookie(**cookie)
-#
-#     partialkey = s.CACHE_USERNAME.format(user.id)
-#     if not red.exists(partialkey):
-#         await UserMod.get_and_cache(user.id)
-#
-#     data = {
-#         **await jwtauth.get_login_response(user, response),
-#         'is_verified': user.is_verified
-#     }
-#     if not user.is_verified:
-#         data.update(dict(details='User is not verified yet so user cannot log in.'))
-#     return data
-#
-#
-# @authrouter.post("/logout", dependencies=[Depends(current_user)])
-# async def logout(response: Response):
-#     """
-#     Logout the user by deleting all tokens. Only unexpired tokens can logout.
-#     """
-#     del response.headers['authorization']
-#     response.delete_cookie(REFRESH_TOKEN_KEY)
-#
+
+
+
 #
 # @authrouter.get("/verify")
 # async def verify(_: Response, t: Optional[str] = None, debug: bool = False):
