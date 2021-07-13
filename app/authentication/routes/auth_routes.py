@@ -92,8 +92,9 @@ async def new_access_token(response: Response, refresh_token: Optional[str] = Co
         # ic(type(mins), mins)
         # mins = 1
         if mins <= 0:
-            raise PermissionDenied()
+            raise PermissionDenied('Refresh token expired')
         elif mins <= s.REFRESH_TOKEN_CUTOFF:
+            ic('Remaining mins:', mins, '/', s.REFRESH_TOKEN_CUTOFF)
             # refresh the refresh_token anyway before it expires
             # renew_refresh_token(user, response, token=token)
             try:
@@ -107,7 +108,8 @@ async def new_access_token(response: Response, refresh_token: Optional[str] = Co
         
         return await jwtauth.get_login_response(user, response)
     
-    except (PermissionDenied):
+    except PermissionDenied as e:
+        ic(e.message)
         # Similar to logging out
         del response.headers['authorization']
         response.delete_cookie(REFRESH_TOKEN_KEY)
