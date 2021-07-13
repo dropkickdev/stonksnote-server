@@ -1,6 +1,9 @@
 import jwt, secrets
 from typing import Optional, cast
 from datetime import datetime, timedelta
+from tld import get_tld
+from tld.exceptions import TldBadUrl
+from urllib.parse import urlparse
 from operator import itemgetter
 from fastapi import APIRouter, Response, Depends, HTTPException, status, Body, Cookie
 from fastapi.security import OAuth2PasswordRequestForm
@@ -118,6 +121,15 @@ async def google_login(response: Response, token: str = Body(...)):
             if not usermod.avatar:
                 usermod.avatar = picture
                 await usermod.save(update_fields=['avatar'])
+            else:
+                try:
+                    _ = get_tld(usermod.avatar, as_object=True)
+                    if urlparse(usermod.avatar) != urlparse(picture):
+                        usermod.avatar = picture
+                        await usermod.save(update_fields=['avatar'])
+                except TldBadUrl:
+                    pass
+            
             if not await OAuthAccount.exists(oauth_name='google', user=usermod):
                 await create_oauth('google', sub, email, usermod)
         else:
