@@ -108,7 +108,7 @@ class UserMod(DTMixin, TortoiseBaseUserModel):
         return d
 
     @classmethod
-    async def get_and_cache(cls, id, model=False):
+    async def get_and_cache(cls, id, *, model=False):
         """
         Get a user's cachable data and cache it for future use. Replaces data if exists.
         Similar to the dependency current_user.

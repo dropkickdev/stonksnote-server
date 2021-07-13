@@ -29,6 +29,7 @@ from app.auth import (
     update_refresh_token, create_refresh_token,
     # refresh_cookie, send_password_email,
     expires, generate_token, refresh_cookie, create_oauth,
+    # renew_refresh_token
 )
 from app.exceptions import PermissionDenied
 
@@ -54,7 +55,7 @@ authrouter.include_router(fusers.get_verify_router(s.SECRET_KEY_EMAIL,
 
 @authrouter.get('/reload_user_data')
 async def get_user_data(_: Response, user=Depends(current_user)):
-    ic(user)
+    # ic(user)
     return {
         'display': user.display,
         'email': user.email,
@@ -78,23 +79,28 @@ async def new_access_token(response: Response, refresh_token: Optional[str] = Co
             raise PermissionDenied()
         
         # TODO: Access the cache instead of querying it
-        token = await Token.get(token=refresh_token, is_blacklisted=False) \
+        token = await Token.get_or_none(token=refresh_token, is_blacklisted=False) \
             .only('id', 'token', 'expires', 'author_id')
+        
+        if not token:
+            raise PermissionDenied()
+        
         user = await userdb.get(token.author_id)
         # ic(type(user), user)
         
         mins = expires(token.expires)
         # ic(type(mins), mins)
-        # mins = -1
+        # mins = 1
         if mins <= 0:
             raise PermissionDenied()
         elif mins <= s.REFRESH_TOKEN_CUTOFF:
             # refresh the refresh_token anyway before it expires
+            # renew_refresh_token(user, response, token=token)
             try:
                 token_dict = await update_refresh_token(user, token=token)
             except DoesNotExist:
                 token_dict = await create_refresh_token(user)
-            
+
             # Generate a new cookie
             cookie = refresh_cookie(REFRESH_TOKEN_KEY, token_dict)
             response.set_cookie(**cookie)
@@ -143,6 +149,8 @@ async def google_login(response: Response, token: str = Body(...)):
 
         user = UserDB(**await usermod.to_dict())
         # user = UserDB(id=usermod.id, is_verified=True, display=usermod.display)
+
+        # renew_refresh_token(user, response, usermod=usermod)
         try:
             token_dict = await update_refresh_token(user, usermod=usermod)
         except DoesNotExist:
@@ -151,12 +159,15 @@ async def google_login(response: Response, token: str = Body(...)):
         # Generate a new cookie
         cookie = refresh_cookie(REFRESH_TOKEN_KEY, token_dict)
         response.set_cookie(**cookie)
-        
+
+        # Save to cache
+        _, usermod = await UserMod.get_and_cache(user.id, model=True)
+
         data = {
-            'display': user.display,
-            'email': user.email,
-            'is_verified': user.is_verified,
-            'avatar': user.avatar,
+            'display': usermod.display,
+            'email': usermod.email,
+            'is_verified': usermod.is_verified,
+            'avatar': usermod.avatar,
             **await jwtauth.get_login_response(user, response),
         }
         return data
@@ -169,27 +180,26 @@ async def google_login(response: Response, token: str = Body(...)):
 async def login(response: Response, credentials: OAuth2PasswordRequestForm = Depends()):
     # user = await fusers.db.authenticate(credentials)
     user = await userdb.authenticate(credentials)
-    ic(type(user), user)
 
     if user is None or not user.is_active or not user.is_verified:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=ErrorCode.LOGIN_BAD_CREDENTIALS,
         )
-
+    
+    # renew_refresh_token(user, response)
     try:
         token_dict = await update_refresh_token(user)
     except DoesNotExist:
         token_dict = await create_refresh_token(user)
 
+    # Generate a new cookie
     cookie = refresh_cookie(REFRESH_TOKEN_KEY, token_dict)
     response.set_cookie(**cookie)
 
-    partialkey = s.CACHE_USERNAME.format(user.id)
-    if not red.exists(partialkey):
-        await UserMod.get_and_cache(user.id)
-        
-    usermod = await UserMod.get(pk=user.id).only('id', 'display', 'email', 'avatar', 'is_verified')
+    # Save to cache
+    _, usermod = await UserMod.get_and_cache(user.id, model=True)
+    
     data = {
         'display': usermod.display,
         'email': usermod.email,
@@ -199,7 +209,7 @@ async def login(response: Response, credentials: OAuth2PasswordRequestForm = Dep
     }
     if not user.is_verified:
         data.update(dict(details='User is not verified yet so user cannot log in.'))
-    ic(data)
+    # ic(data)
     return data
 
 
@@ -211,6 +221,8 @@ async def logout(response: Response):
     del response.headers['authorization']
     response.delete_cookie('refresh_token')
     return
+
+
 
 # @authrouter.post('/facebook/login')
 # async def facebook_login(response: Response, data: dict = Body(...)):

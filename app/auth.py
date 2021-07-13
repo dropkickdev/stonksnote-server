@@ -1,6 +1,6 @@
 import secrets, pytz
 from datetime import datetime, timedelta
-from fastapi import Response, Request
+from fastapi import Response
 from fastapi_users import FastAPIUsers
 from fastapi.security import OAuth2PasswordBearer
 from fastapi_users.authentication import JWTAuthentication
@@ -8,6 +8,7 @@ from fastapi_users.user import UserNotExists
 from fastapi_users.router.reset import RESET_PASSWORD_TOKEN_AUDIENCE
 from fastapi_users.router.verify import VERIFY_USER_TOKEN_AUDIENCE
 from fastapi_users.utils import generate_jwt
+from tortoise.exceptions import DoesNotExist
 
 from .settings import settings as s
 from .validation import *
@@ -17,6 +18,7 @@ from .authentication.models.account import *
 from .authentication.models.pydantic import *
 from .authentication.Mailman import *
 from .authentication.fapiusers import *
+
 
 
 
@@ -30,32 +32,32 @@ tokenonly = OAuth2PasswordBearer(tokenUrl='token')
 REFRESH_TOKEN_KEY = 'refresh_token'         # Don't change this. This is hard-coded as a variable.
 
 
-async def register_callback(user: UserDB, _: Request):
+async def register_callback(user: UserDB, _: Response):
     # TODO: Add default collections
     # TODO: Add defalt tags
     # TODO: Create display field value
     usermod = await UserMod.get_or_none(pk=user.id).only('id', 'display')
     
-    # my.name@email.com => myname
+    # Grab email name
     usermod.display = ''.join((user.email.split('@')[0]).split('.'))
     await usermod.save(update_fields=['display'])
     
     ic(f'Registration complete by {user.email}')
 
 
-def after_verification_request(user: UserDB, token: str, _: Request):
+def after_verification_request(user: UserDB, token: str, _: Response):
     ic(f'Requested verification token by {user.email}: {token}')
 
 
-def verification_complete(user: UserDB, _: Request):
+def verification_complete(user: UserDB, _: Response):
     ic(f'Verification completed for {user.email}')
 
 
-def after_forgot_password(user: UserDB, token: str, _: Request):
+def after_forgot_password(user: UserDB, token: str, _: Response):
     ic(f'Password change request for {user.email}: {token}')
 
 
-def after_reset_password(user: UserDB, _: Request):
+def after_reset_password(user: UserDB, _: Response):
     ic(f'Password reset complete for {user.email}')
 
 
@@ -199,6 +201,22 @@ async def update_refresh_token(user: UserDB, token: Optional[Token] = None,
     return await generate_token(user, create=False, token=token, usermod=usermod)
 
 
+# def renew_refresh_token(user: UserDB, response: Response, *, usermod: Optional[UserMod] = None,
+#                         token: Optional[Token] = None):
+#     try:
+#         # Update
+#         token_dict = await generate_token(user, create=False, token=token, usermod=usermod)
+#     except DoesNotExist:
+#         # Create
+#         token_dict = await generate_token(user, usermod=usermod)
+# #
+#     # Generate a new cookie
+#     cookie = refresh_cookie(REFRESH_TOKEN_KEY, token_dict)
+#     response.set_cookie(**cookie)
+# #
+#     return token_dict
+
+
 def refresh_cookie(name: str, token: dict, **kwargs):
     if token['expires'] <= datetime.now(tz=pytz.UTC):
         raise ValueError('Cookie expires date must be greater than the date now')
@@ -233,3 +251,5 @@ def time_difference(expires: datetime, now: datetime = None):
 def expires(expires: datetime, units: str = 'minutes'):
     diff = time_difference(expires)
     return diff[units]
+
+
