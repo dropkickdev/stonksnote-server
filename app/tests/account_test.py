@@ -3,6 +3,7 @@ from datetime import datetime
 from collections import Counter
 from limeutils import listify
 
+import app.fixtures.datastore
 from app import ic, cache
 from app.auth import userdb, UserMod, UserDBComplete
 from app.cache import red
@@ -52,7 +53,7 @@ def test_get_and_cache(tempdb, loop):
     assert isinstance(query_data.username, str)
     assert isinstance(query_data.timezone, str)
     assert isinstance(query_data.groups, list)
-    assert isinstance(query_data.options, dict)
+    assert isinstance(app.fixtures.datastore.options_dict, dict)
 
     assert isinstance(cache_data.id, str)
     assert isinstance(cache_data.email, str)
@@ -62,7 +63,7 @@ def test_get_and_cache(tempdb, loop):
     assert isinstance(cache_data.username, str)
     assert isinstance(cache_data.timezone, str)
     assert isinstance(cache_data.groups, list)
-    assert isinstance(cache_data.options, dict)
+    assert isinstance(app.fixtures.datastore.options_dict, dict)
 
     assert query_data.id == cache_data.id
     assert query_data.email == cache_data.email
@@ -73,9 +74,9 @@ def test_get_and_cache(tempdb, loop):
     assert query_data.timezone == cache_data.timezone
     assert Counter(query_data.groups) == Counter(cache_data.groups)
 
-    assert len(query_data.options) == len(cache_data.options)
-    for k, v in query_data.options.items():
-        assert cache_data.options[k] == v
+    assert len(app.fixtures.datastore.options_dict) == len(app.fixtures.datastore.options_dict)
+    for k, v in app.fixtures.datastore.options_dict.items():
+        assert app.fixtures.datastore.options_dict[k] == v
 
 # @pytest.mark.focus
 def test_get_data(tempdb, loop):

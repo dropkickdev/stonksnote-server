@@ -163,7 +163,7 @@ class Collection(DTMixin, SharedMixin, models.Model):
 class Mark(DTMixin, SharedMixin, models.Model):
     symbol = fields.CharField(max_length=10)
     title = fields.ForeignKeyField('models.Taxonomy', related_name='marks', null=True)
-    expires = fields.DateField()
+    expires = fields.DateField(null=True)
     
     meta = fields.JSONField(null=True)
     is_active = fields.BooleanField(default=True)

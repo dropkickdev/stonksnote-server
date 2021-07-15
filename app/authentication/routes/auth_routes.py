@@ -23,15 +23,17 @@ from google.auth.transport import requests
 from app import ic, red, exceptions as x
 from app.settings import settings as s
 from app.auth import (
-    userdb, fusers, jwtauth, current_user, User, UserDB, Token, UserMod, OAuthAccount,
+    userdb, fusers, jwtauth, current_user, User, UserDB, Token, UserMod, OAuthAccount, Option,
     REFRESH_TOKEN_KEY, ResetPasswordVM,
     register_callback, after_verification_request, verification_complete,
     update_refresh_token, create_refresh_token,
     # refresh_cookie, send_password_email,
     expires, generate_token, refresh_cookie, create_oauth,
     # renew_refresh_token
+    finish_account_setup,
 )
 from app.exceptions import PermissionDenied
+from app.fixtures.datastore import options_dict
 
 
 
@@ -149,6 +151,9 @@ async def google_login(response: Response, token: str = Body(...)):
             usermod = await UserMod.create(**usermod_d)
             await create_oauth('google', sub, email, usermod)
 
+            # Setup the rest of the requirements
+            await finish_account_setup(usermod)
+
         user = UserDB(**await usermod.to_dict())
         # user = UserDB(id=usermod.id, is_verified=True, display=usermod.display)
 
@@ -170,8 +175,10 @@ async def google_login(response: Response, token: str = Body(...)):
             'email': usermod.email,
             'is_verified': usermod.is_verified,
             'avatar': usermod.avatar,
+            'timezone': usermod.timezone,
             **await jwtauth.get_login_response(user, response),
         }
+        ic(data)
         return data
     except GoogleAuthError:
         raise GoogleAuthError()
@@ -207,8 +214,10 @@ async def login(response: Response, credentials: OAuth2PasswordRequestForm = Dep
         'email': usermod.email,
         'is_verified': usermod.is_verified,
         'avatar': usermod.avatar,
+        'timezone': usermod.timezone,
         **await jwtauth.get_login_response(user, response),
     }
+    ic(data)
     if not user.is_verified:
         data.update(dict(details='User is not verified yet so user cannot log in.'))
     # ic(data)

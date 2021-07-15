@@ -8,7 +8,8 @@ from fastapi_users.user import UserNotExists
 from fastapi_users.router.reset import RESET_PASSWORD_TOKEN_AUDIENCE
 from fastapi_users.router.verify import VERIFY_USER_TOKEN_AUDIENCE
 from fastapi_users.utils import generate_jwt
-from tortoise.exceptions import DoesNotExist
+from tortoise.exceptions import DoesNotExist, OperationalError
+from tortoise.transactions import in_transaction
 
 from .settings import settings as s
 from .validation import *
@@ -18,6 +19,8 @@ from .authentication.models.account import *
 from .authentication.models.pydantic import *
 from .authentication.Mailman import *
 from .authentication.fapiusers import *
+
+from app.fixtures.datastore import options_dict
 
 
 
@@ -32,15 +35,30 @@ tokenonly = OAuth2PasswordBearer(tokenUrl='token')
 REFRESH_TOKEN_KEY = 'refresh_token'         # Don't change this. This is hard-coded as a variable.
 
 
-async def register_callback(user: UserDB, _: Response):
-    # TODO: Add default collections
-    # TODO: Add defalt tags
-    # TODO: Create display field value
-    usermod = await UserMod.get_or_none(pk=user.id).only('id', 'display')
+
+
+async def finish_account_setup(usermod: UserMod):
+    try:
+        async with in_transaction():
+            # Populate display field
+            usermod.display = ''.join((usermod.email.split('@')[0]).split('.'))
+            await usermod.save(update_fields=['display'])
+            
+            # Add user options
+            ll = []
+            for name, val in options_dict['user'].items():
+                ll.append(Option(name=name, value=val, user=usermod))
+            await Option.bulk_create(ll)
+    except OperationalError:
+        return 'ERROR account_setup'
     
-    # Grab email name
-    usermod.display = ''.join((user.email.split('@')[0]).split('.'))
-    await usermod.save(update_fields=['display'])
+
+async def register_callback(user: UserDB, _: Response):
+    usermod = await UserMod.get_or_none(pk=user.id).only('id', 'display', 'email')
+
+    # TODO: Add default collections
+    # TODO: Add default tags
+    await finish_account_setup(usermod)
     
     ic(f'Registration complete by {user.email}')
 

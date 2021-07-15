@@ -1,4 +1,4 @@
-
+from app import settings as s
 
 collection_default = [
     dict(name='Shortlist', tier='equity'),
@@ -55,4 +55,28 @@ taxonomy_global = {
     #     ],
     # },
     
+}
+options_dict = {
+    'site': {
+        'sitename': s.SITE_NAME,
+        'siteurl': s.SITE_URL,
+        'author': 'DropkickDev',
+        'last_update': '',
+        'max_upload': 3,        # MB
+    },
+    'admin': {
+        'access_token': s.ACCESS_TOKEN_EXPIRE,
+        'refresh_token': s.REFRESH_TOKEN_EXPIRE,
+        'refresh_token_cutoff': s.REFRESH_TOKEN_CUTOFF,
+        'verify_email': s.VERIFY_EMAIL
+    },
+    # For each user
+    'user': {
+        'theme': 'light',
+        'email_notifications': True,
+        'language': 'en',
+        'show_currency_symbol': True,
+        'date_format': '%Y-%m-%d %H:%M:%S',
+        
+    },
 }

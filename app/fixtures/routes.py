@@ -1,13 +1,15 @@
-from redis.exceptions import ResponseError
 from fastapi import APIRouter, FastAPI
 from fastapi_users.user import get_create_user
 from pydantic import EmailStr
 from tortoise.transactions import in_transaction
 
+from .datastore import options_dict
 from app.settings import settings as s
-from app.auth import userdb, UserDB, UserCreate, UserMod, UserPermissions, Group, Permission, Option
+from app.auth import userdb, UserDB, UserCreate, UserMod, UserPermissions, Group, Permission, \
+    Option, finish_account_setup
 from app.tests.data import VERIFIED_EMAIL_DEMO, UNVERIFIED_EMAIL_DEMO
-from app.fixtures.permissions import ContentGroup, AccountGroup, StaffGroup, AdminGroup, NoaddGroup
+from app.fixtures.permissions import ContentGroup, AccountGroup, StaffGroup, AdminGroup, \
+    NoaddGroup, permission_set, full, banning, group_set
 
 
 
@@ -22,62 +24,122 @@ perms = {
     'NoaddGroup': NoaddGroup,
 }
 enchance_only_perms = ['foo.delete', 'foo.hard_delete']
-options = {
-    'site': {
-        'sitename': s.SITE_NAME,
-        'siteurl': s.SITE_URL,
-        'author': 'DropkickDev',
-        'last_update': '',
-    },
-    'user': {
-        'theme': 'Light',
-        'email_notifications': True,
-        'language': 'en',
-    },
-    'admin': {
-        'access_token': s.ACCESS_TOKEN_EXPIRE,
-        'refresh_token': s.REFRESH_TOKEN_EXPIRE,
-        'refresh_token_cutoff': s.REFRESH_TOKEN_CUTOFF,
-        'verify_email': s.VERIFY_EMAIL
-    }
-}
 
 
-@fixturerouter.get('/init', summary="Groups, Permissions, and relationships")
+@fixturerouter.get('/init', summary="Permissions, Groups, and Assignments of each")
 async def init():
     try:
-        # Create groups and permissions
-        permlist = []
-        for groupname, val in perms.items():
-            group = await Group.create(name=groupname)
-            for app, actions in val.items():
-                for i in actions:
-                    code = f'{app}.{i}'
-                    if code in permlist:
-                        continue
-                    await Permission.create(
-                        name=f'{app.capitalize()} {i.capitalize()}', code=code
-                    )
-                    permlist.append(code)
+        ll = []
+        # Create permissions
+        for key, val in permission_set.items():
+            for app in val:
+                if key == 'full':
+                    for perm in full:
+                        code = f'{app}.{perm}'
+                        ll.append(
+                            Permission(name=f'{app.capitalize()} {perm.capitalize()}', code=code)
+                        )
+                elif key == 'banning':
+                    for perm in banning:
+                        code = f'{app}.{perm}'
+                        ll.append(
+                            Permission(name=f'{app.capitalize()} {perm.capitalize()}', code=code)
+                        )
+        await Permission.bulk_create(ll)
         
-        for groupname, data in perms.items():
-            group = await Group.get(name=groupname).only('id', 'name')
-            ll = []
-            for part, actions in data.items():
-                for i in actions:
-                    ll.append(f'{part}.{i}')
-            permlist = await Permission.filter(code__in=ll).only('id')
-            await group.permissions.add(*permlist)
-            
-            try:
-                # Save group perms to cache as list
-                await Group.get_and_cache(groupname)
-            except ResponseError:
-                pass
-            
-        return True
+        # Create groups
+        ll = []
+        for group in group_set:
+            ll.append(Group(name=group))
+        await Group.bulk_create(ll)
+        
+        # Assign perms to groups
+        grouplist = await Group.all().only('id', 'name')
+        permlist = await Permission.all().only('id', 'code')
+        perm_dict = {i.code: i for i in permlist}
+        group_dict = {i.name: i for i in grouplist}
+        
+        ll = []
+        groupname = 'AccountGroup'
+        for app, permlist in AccountGroup.items():
+            for perm in permlist:
+                code = f'{app}.{perm}'
+                to_add = perm_dict.get(code)
+                ll.append(to_add)
+        group = group_dict.get(groupname)
+        await group.permissions.add(*ll)
+        await Group.get_and_cache(groupname)
+
+        ll = []
+        groupname = 'ContentGroup'
+        for app, permlist in ContentGroup.items():
+            for perm in permlist:
+                code = f'{app}.{perm}'
+                to_add = perm_dict.get(code)
+                ll.append(to_add)
+        group = group_dict.get(groupname)
+        await group.permissions.add(*ll)
+        await Group.get_and_cache(groupname)
+
+        ll = []
+        groupname = 'StaffGroup'
+        for app, permlist in StaffGroup.items():
+            for perm in permlist:
+                code = f'{app}.{perm}'
+                to_add = perm_dict.get(code)
+                ll.append(to_add)
+        group = group_dict.get(groupname)
+        await group.permissions.add(*ll)
+        await Group.get_and_cache(groupname)
+
+        ll = []
+        groupname = 'AdminGroup'
+        for app, permlist in AdminGroup.items():
+            for perm in permlist:
+                code = f'{app}.{perm}'
+                to_add = perm_dict.get(code)
+                ll.append(to_add)
+        group = group_dict.get(groupname)
+        await group.permissions.add(*ll)
+        await Group.get_and_cache(groupname)
+
+        ll = []
+        groupname = 'NoaddGroup'
+        for app, permlist in NoaddGroup.items():
+            for perm in permlist:
+                code = f'{app}.{perm}'
+                to_add = perm_dict.get(code)
+                ll.append(to_add)
+        group = group_dict.get(groupname)
+        await group.permissions.add(*ll)
+        await Group.get_and_cache(groupname)
+        
+        return 'SUCCESS'
     except Exception:
-        return False
+        return 'ERROR'
+
+
+@fixturerouter.get('/options', summary='Create global options. User options will be inserted '
+                                       'later.')
+async def create_options():
+    try:
+        # users = await UserMod.all().only('id')
+        # if not users:
+        #     return 'foo'
+        ll = []
+        for cat, data in options_dict.items():
+            for name, val in data.items():
+                # if cat == 'user':
+                #     for user in users:
+                #         ll.append(Option(name=name, value=val, user_id=user.id))
+                if cat == 'site':
+                    ll.append(Option(name=name, value=val))
+                elif cat == 'admin':
+                    ll.append(Option(name=name, value=val, admin_only=True))
+        await Option.bulk_create(ll)
+        return 'SUCCESS'
+    except Exception:
+        return 'ERROR'
 
 
 @fixturerouter.get('/users', summary="Create users")
@@ -111,6 +173,9 @@ async def create_users():
         for perm in userperms:
             ll.append(UserPermissions(user=user, permission=perm, author=user))
         await UserPermissions.bulk_create(ll)
+
+        # Wrap up User 1
+        await finish_account_setup(user)
         
         # Group or User 1
         # await user.add_group('StaffGroup')
@@ -122,32 +187,24 @@ async def create_users():
         groups = await Group.filter(name__in=s.USER_GROUPS)
         user = await UserMod.get(pk=created_user.id)
         await user.groups.add(*groups)
+
+        # Wrap up User 2
+        await finish_account_setup(user)
     
         return ret
 
 
-@fixturerouter.get('/options', summary='Don\'t run if you haven\'t created users yet')
-async def create_options():
+@fixturerouter.get('/all', summary='Runs everything in the correct order')
+async def runall():
     try:
-        users = await UserMod.all().only('id')
-        if not users:
-            return 'foo'
         ll = []
-        for cat, data in options.items():
-            for name, val in data.items():
-                if cat == 'user':
-                    for user in users:
-                        ll.append(Option(name=name, value=val, user_id=user.id))
-                elif cat == 'site':
-                    ll.append(Option(name=name, value=val))
-                elif cat == 'admin':
-                    ll.append(Option(name=name, value=val, admin_only=True))
-        await Option.bulk_create(ll)
-        return True
+        ll.append(await init())
+        ll.append(await create_options())
+        ll.append(await create_users())
+        
+        return ll
     except Exception:
-        return False
-
-
+        return 'ERROR'
 
 
 
@@ -160,5 +217,5 @@ async def create_options():
 #         await rtoken.save(update_fields=['is_blacklisted'])
 #         return rtoken
 #     except DoesNotExist:
-#         return False
+#         return 'ERROR
 
