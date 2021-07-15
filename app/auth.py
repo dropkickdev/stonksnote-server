@@ -20,8 +20,8 @@ from .authentication.models.pydantic import *
 from .authentication.Mailman import *
 from .authentication.fapiusers import *
 
-from app.fixtures.datastore import options_dict
-
+from app.fixtures.datastore import options_dict, collection_default
+from trades.models import Collection
 
 
 
@@ -38,6 +38,11 @@ REFRESH_TOKEN_KEY = 'refresh_token'         # Don't change this. This is hard-co
 
 
 async def finish_account_setup(usermod: UserMod):
+    """
+    Creates all the necessary entries for a new user such as Options, etc.
+    :param usermod:     UserMod
+    :return:
+    """
     try:
         async with in_transaction():
             # Populate display field
@@ -49,6 +54,12 @@ async def finish_account_setup(usermod: UserMod):
             for name, val in options_dict['user'].items():
                 ll.append(Option(name=name, value=val, user=usermod))
             await Option.bulk_create(ll)
+            
+            # Add collections
+            ll = []
+            for i in collection_default:
+                ll.append(Collection(**i, author=usermod))
+            await Collection.bulk_create(ll)
     except OperationalError:
         return 'ERROR account_setup'
     
@@ -56,7 +67,6 @@ async def finish_account_setup(usermod: UserMod):
 async def register_callback(user: UserDB, _: Response):
     usermod = await UserMod.get_or_none(pk=user.id).only('id', 'display', 'email')
 
-    # TODO: Add default collections
     # TODO: Add default tags
     await finish_account_setup(usermod)
     

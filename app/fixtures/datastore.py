@@ -1,8 +1,8 @@
 from app import settings as s
 
 collection_default = [
-    dict(name='Shortlist', tier='equity'),
-    dict(name='Active', tier='equity'),
+    dict(name='Shortlist', category='equity', is_locked=True),
+    dict(name='Active', category='equity', is_locked=True),
 ]
 
 # taxonomy_default = [
