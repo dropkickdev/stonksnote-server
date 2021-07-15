@@ -25,7 +25,8 @@ from trades.models import Collection
 
 
 
-userdb = TortoiseUDB(UserDB, UserMod, include=['timezone', 'display', 'avatar'], alt=UserDBComplete)
+userdb = TortoiseUDB(UserDB, UserMod, include=['timezone', 'display', 'avatar', 'username'],
+                     alt=UserDBComplete)
 jwtauth = JWTAuthentication(secret=s.SECRET_KEY, lifetime_seconds=s.ACCESS_TOKEN_EXPIRE)
 fusers = FastAPIUsers(userdb, [jwtauth], User, UserCreate, UserUpdate, UserDB)
 

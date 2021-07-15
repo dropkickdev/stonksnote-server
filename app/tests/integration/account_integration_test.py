@@ -6,7 +6,7 @@ from fastapi_users.utils import JWT_ALGORITHM
 from app import ic
 from app.settings import settings as s
 from app.auth import userdb, UserDBComplete, UserMod
-from app.tests.auth_test import get_usermod, get_fapiuser_user
+from app.tests.auth_test import get_usermod, get_fusers_user
 
 
 
@@ -25,7 +25,7 @@ def register_user(client, random_email, passwd):
     return res, None
 
 def verify_user(loop, client, id):
-    user = loop.run_until_complete(get_fapiuser_user(id))
+    user = loop.run_until_complete(get_fusers_user(id))
     a = user.is_verified
     b = user.is_active
     assert not a

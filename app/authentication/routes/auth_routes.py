@@ -26,6 +26,7 @@ from app.auth import (
     userdb, fusers, jwtauth, current_user, User, UserDB, Token, UserMod, OAuthAccount, Option,
     REFRESH_TOKEN_KEY, ResetPasswordVM,
     register_callback, after_verification_request, verification_complete,
+    after_forgot_password, after_reset_password,
     update_refresh_token, create_refresh_token,
     # refresh_cookie, send_password_email,
     expires, generate_token, refresh_cookie, create_oauth,
@@ -42,6 +43,13 @@ authrouter.include_router(fusers.get_register_router(register_callback))
 authrouter.include_router(fusers.get_verify_router(s.SECRET_KEY_EMAIL,
                                                    after_verification_request=after_verification_request,
                                                    after_verification=verification_complete))
+authrouter.include_router(
+    fusers.get_reset_password_router(s.SECRET_KEY_EMAIL,
+                                     after_forgot_password=after_forgot_password,
+                                     after_reset_password=after_reset_password
+    )
+)
+
 
 # For reference only. Do not use.
 # authrouter.include_router(fapiuser.get_auth_router(jwtauth))    # login, logout
@@ -60,6 +68,7 @@ async def get_user_data(_: Response, user=Depends(current_user)):
     # ic(user)
     return {
         'display': user.display,
+        'username': user.username,
         'email': user.email,
         'is_verified': user.is_verified,
         'avatar': user.avatar
@@ -127,7 +136,8 @@ async def google_login(response: Response, token: str = Body(...)):
         
         if await UserMod.exists(email=email):
             # User exists
-            usermod = await UserMod.get(email=email).only('id', 'is_verified', 'display', 'avatar')
+            usermod = await UserMod.get(email=email).only('id', 'is_verified', 'display',
+                                                          'avatar', 'username')
             if not usermod.avatar:
                 usermod.avatar = picture
                 await usermod.save(update_fields=['avatar'])
@@ -172,6 +182,7 @@ async def google_login(response: Response, token: str = Body(...)):
 
         data = {
             'display': usermod.display,
+            'username': usermod.username,
             'email': usermod.email,
             'is_verified': usermod.is_verified,
             'avatar': usermod.avatar,
@@ -211,6 +222,7 @@ async def login(response: Response, credentials: OAuth2PasswordRequestForm = Dep
     
     data = {
         'display': usermod.display,
+        'username': usermod.username,
         'email': usermod.email,
         'is_verified': usermod.is_verified,
         'avatar': usermod.avatar,
