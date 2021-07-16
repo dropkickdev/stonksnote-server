@@ -60,6 +60,7 @@ StaffGroup = {
     'broker': full,
 }
 AdminGroup = {
+    **StaffGroup,
     'staff': [*full, *banning],
     'admin': ['read', 'update', *banning],
     'settings': full

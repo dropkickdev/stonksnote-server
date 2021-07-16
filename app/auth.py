@@ -1,6 +1,6 @@
 import secrets, pytz
 from datetime import datetime, timedelta
-from fastapi import Response
+from fastapi import Request
 from fastapi_users import FastAPIUsers
 from fastapi.security import OAuth2PasswordBearer
 from fastapi_users.authentication import JWTAuthentication
@@ -65,7 +65,7 @@ async def finish_account_setup(usermod: UserMod):
         return 'ERROR account_setup'
     
 
-async def register_callback(user: UserDB, _: Response):
+async def register_callback(user: UserDB, _: Request):
     usermod = await UserMod.get_or_none(pk=user.id).only('id', 'display', 'email')
 
     # TODO: Add default tags
@@ -74,19 +74,19 @@ async def register_callback(user: UserDB, _: Response):
     ic(f'Registration complete by {user.email}')
 
 
-def after_verification_request(user: UserDB, token: str, _: Response):
+def after_verification_request(user: UserDB, token: str, _: Request):
     ic(f'Requested verification token by {user.email}: {token}')
 
 
-def verification_complete(user: UserDB, _: Response):
+def verification_complete(user: UserDB, _: Request):
     ic(f'Verification completed for {user.email}')
 
 
-def after_forgot_password(user: UserDB, token: str, _: Response):
+def after_forgot_password(user: UserDB, token: str, _: Request):
     ic(f'Password change request for {user.email}: {token}')
 
 
-def after_reset_password(user: UserDB, _: Response):
+def after_reset_password(user: UserDB, _: Request):
     ic(f'Password reset complete for {user.email}')
 
 
@@ -209,7 +209,7 @@ async def create_oauth(provider: str, id: str, email: str, usermod: UserMod):
 #     return secrets.token_hex(nbytes=nbytes)
 
 
-# TESTME: Test manually
+
 async def create_refresh_token(user: UserDB, usermod: Optional[UserMod] = None) -> dict:
     """
     Create and save a new refresh token
@@ -218,7 +218,7 @@ async def create_refresh_token(user: UserDB, usermod: Optional[UserMod] = None) 
     """
     return await generate_token(user, usermod=usermod)
 
-# TESTME: Test manually
+
 async def update_refresh_token(user: UserDB, token: Optional[Token] = None,
                                usermod: Optional[UserMod] = None) -> dict:
     """

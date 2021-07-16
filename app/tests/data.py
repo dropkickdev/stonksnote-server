@@ -1,3 +1,7 @@
+import importlib
+from app import ic
+from app.fixtures.permissions import AccountGroup, ContentGroup, StaffGroup, NoaddGroup
+
 
 
 VERIFIED_EMAIL_DEMO = 'en.chance@gmail.com'
@@ -10,15 +14,30 @@ PASSWORD_RESET_TOKEN_DEMO = ''
 EMAIL_VERIFICATION_TOKEN_EXPIRED = ''
 
 
-accountperms = ['profile.read', 'profile.update', 'account.read', 'account.update',
-                'message.create', 'message.read', 'message.update', 'message.delete']
-noaddperms = ['foo.read', 'foo.update', 'foo.delete', 'foo.hard_delete', 'user.create',
-              'user.delete', 'user.hard_delete']
-contentperms = ['content.create', 'content.read', 'content.update', 'content.delete']
-staffperms = ['user.create', 'user.read', 'user.update', 'user.ban', 'user.unban',
-              'group.create', 'group.read', 'group.update', 'group.delete',
-              'group.attach', 'group.detach',
-              'permission.create', 'permission.read', 'permission.update', 'permission.delete',
-              'permission.attach', 'permission.detach',
-              'taxonomy.create', 'taxonomy.read', 'taxonomy.update', 'taxonomy.delete']
+accountperms = []
+groupname = 'AccountGroup'
+for app, permlist in AccountGroup.items():
+    for perm in permlist:
+        code = f'{app}.{perm}'
+        accountperms.append(code)
 
+contentperms = []
+groupname = 'ContentGroup'
+for app, permlist in ContentGroup.items():
+    for perm in permlist:
+        code = f'{app}.{perm}'
+        contentperms.append(code)
+
+staffperms = []
+groupname = 'StaffGroup'
+for app, permlist in StaffGroup.items():
+    for perm in permlist:
+        code = f'{app}.{perm}'
+        staffperms.append(code)
+
+noaddperms = []
+groupname = 'NoaddGroup'
+for app, permlist in NoaddGroup.items():
+    for perm in permlist:
+        code = f'{app}.{perm}'
+        noaddperms.append(code)

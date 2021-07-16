@@ -7,6 +7,7 @@ from app import red, ic  # noqa
 from app.auth import UserMod, fusers
 from app.settings import settings as s
 from .data import VERIFIED_EMAIL_DEMO, UNVERIFIED_EMAIL_DEMO
+from app.tests.conftest import generate_verification_token
 
 
 # def login_func(d, client):
@@ -70,7 +71,7 @@ def test_register(tempdb, client, loop, random_email, passwd):
     assert data.get('detail')[0].get('msg') == 'value is not a valid email address'
 
 
-@pytest.mark.skip
+# @pytest.mark.focus
 def test_registration_verification(tempdb, loop, client, random_email, passwd):
     async def ab():
         await tempdb()
@@ -86,16 +87,8 @@ def test_registration_verification(tempdb, loop, client, random_email, passwd):
     
     user = loop.run_until_complete(get_fusers_user(data.get('id')))
     if user.is_active and not user.is_verified:
-        token_data = {
-            "user_id": str(user.id),
-            "email": user.email,
-            "aud": VERIFY_USER_TOKEN_AUDIENCE,
-        }
-        token = generate_jwt(
-            data=token_data,
-            secret=s.SECRET_KEY_EMAIL,
-            lifetime_seconds=s.VERIFY_EMAIL_TTL,
-        )
+        # Generate the token manually since /auth/request-verify-token doesn't return anything
+        token = generate_verification_token(user)
 
         res = client.get(f'/auth/verify?t={token}&debug=true')
         data = res.json()
@@ -106,7 +99,6 @@ def test_registration_verification(tempdb, loop, client, random_email, passwd):
         assert str(usermod.id) == data.get('id')
         assert usermod.email == data.get('email')
         assert usermod.is_verified
-
 
 @pytest.mark.login
 def test_login(tempdb, loop, client, passwd):

@@ -2,10 +2,11 @@ import pytest, random
 from tortoise import Tortoise
 from fastapi.testclient import TestClient
 from fastapi_users.utils import generate_jwt
+from fastapi_users.router.verify import VERIFY_USER_TOKEN_AUDIENCE
 
 from main import get_app
 from app.fixtures.routes import init, create_users, create_options
-from app.auth import jwtauth
+from app.auth import jwtauth, UserDB
 from app.settings import settings as s
 from app.settings.db import DATABASE_MODELS, DATABASE_URL
 
@@ -92,3 +93,16 @@ def tempdb(fixtures):
 @pytest.fixture
 def loop(client):
     yield client.task.get_loop()
+
+
+def generate_verification_token(usermod: UserDB):
+    token_data = {
+        "user_id": str(usermod.id),
+        "email": usermod.email,
+        "aud": VERIFY_USER_TOKEN_AUDIENCE,
+    }
+    return generate_jwt(
+        data=token_data,
+        secret=s.SECRET_KEY_EMAIL,
+        lifetime_seconds=s.VERIFY_EMAIL_TTL,
+    )

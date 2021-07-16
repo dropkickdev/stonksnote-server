@@ -1,4 +1,4 @@
-import json, jwt
+import json, jwt, pytest
 from fastapi_users.utils import generate_jwt
 from fastapi_users.router.verify import VERIFY_USER_TOKEN_AUDIENCE
 from fastapi_users.utils import JWT_ALGORITHM
@@ -7,6 +7,7 @@ from app import ic
 from app.settings import settings as s
 from app.auth import userdb, UserDBComplete, UserMod
 from app.tests.auth_test import get_usermod, get_fusers_user
+from app.tests.conftest import generate_verification_token
 
 
 
@@ -32,16 +33,8 @@ def verify_user(loop, client, id):
     assert b
     
     if not a and b:
-        token_data = {
-            "user_id": str(user.id),
-            "email": user.email,
-            "aud": VERIFY_USER_TOKEN_AUDIENCE,
-        }
-        token = generate_jwt(
-            data=token_data,
-            secret=s.SECRET_KEY_EMAIL,
-            lifetime_seconds=s.VERIFY_EMAIL_TTL,
-        )
+        # Generate the token manually since /auth/request-verify-token doesn't return anything
+        token = generate_verification_token(user)
         
         res = client.get(f'/auth/verify?t={token}&debug=true')
         decoded_token = jwt.decode(token, s.SECRET_KEY_EMAIL, audience=VERIFY_USER_TOKEN_AUDIENCE,
@@ -81,7 +74,7 @@ def logout(access_token, client):
     headers = {
         'Authorization': f'Bearer {access_token}'
     }
-    res = client.post('/auth/logout', headers=headers)
+    res = client.get('/auth/logout', headers=headers)
     data = res.json()
     a = res.status_code == 200
     b = data

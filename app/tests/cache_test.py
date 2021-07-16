@@ -1,6 +1,7 @@
+import pytest
 from ast import literal_eval
 
-from app import cache, red
+from app import cache, red, ic
 from app.settings import settings as s
 from app.auth import UserMod
 from app.tests.auth_test import VERIFIED_EMAIL_DEMO
@@ -16,8 +17,8 @@ def test_prepareuser_dict(tempdb, loop):
         user_dict = await usermod.to_dict(prefetch=True)
         return cache.prepareuser_dict(user_dict)
     prepared = loop.run_until_complete(ab())
-
-    assert len(prepared) == 11
+    
+    assert len(prepared) == 13
     for k, v in prepared.items():
         if k in ['is_active', 'is_superuser', 'is_verified']:
             assert isinstance(v, int)
