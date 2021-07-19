@@ -1,15 +1,15 @@
 from fastapi import APIRouter, Response, Depends
-from tortoise.exceptions import BaseORMException
+from tortoise.exceptions import OperationalError
 from redis.exceptions import RedisError
 
 from app import ic, exceptions as x
 from app.auth import current_user
-from .validation import CreateMark
-from .models import Mark
+from .resource import CreateMark, TradeData, trades_request
+from .models import Mark, Trade
+
 
 
 traderoutes = APIRouter()
-
 
 @traderoutes.post('/marks/add')
 async def add_mark(res: Response, mark: CreateMark, user=Depends(current_user)):
@@ -19,7 +19,22 @@ async def add_mark(res: Response, mark: CreateMark, user=Depends(current_user)):
         if markmod := await Mark.create(**mark.dict(), author=user):
             res.status_code = 201
             return markmod.to_dict()
-    except (BaseORMException, RedisError):
+    except (OperationalError, RedisError):
         raise x.ServiceError()
     except Exception:
         raise x.AppError()
+
+@traderoutes.get('/trades')
+async def get_trades(_: Response, spec: dict = Depends(trades_request), user=Depends(current_user)):
+    if not await user.has_perm('trade.read'):
+        raise x.PermissionDenied()
+    try:
+        spec = TradeData(**spec, user=user)
+        trades = await Trade.get_trades(spec)
+        return trades
+    except (OperationalError, RedisError):
+        raise x.ServiceError()
+    except Exception:
+        raise x.AppError()
+    
+    

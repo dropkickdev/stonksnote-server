@@ -1,11 +1,12 @@
 from tortoise import models, fields
 from tortoise.manager import Manager
+from tortoise.exceptions import OperationalError
 from limeutils import modstr
+from pydantic import UUID4
 
 from app.authentication.models.manager import ActiveManager
 from app.authentication.models.core import DTMixin, SharedMixin
-
-
+from .resource import TradeData
 
 
 class Broker(DTMixin, SharedMixin, models.Model):
@@ -139,13 +140,27 @@ class Trade(DTMixin, SharedMixin, models.Model):
                                   through='trades_tags', backward_key='trade_id')
     collections = fields.ManyToManyField('models.Collection', related_name='collection_trades',
                                          through='trades_tradecollection', backward_key='trade_id')
-#
     class Meta:
         table = 'trades_trade'
         manager = ActiveManager()
 
     def __str__(self):
         return f'{self.user}:{self.equity}'
+    
+    # TESTME: Untested
+    @classmethod
+    async def get_trades(cls, spec: TradeData):
+        # TODO: Placeholder
+        trades = None
+        count = cls.get_trades_count(spec.user.id)
+        return trades
+    
+    # TESTME: Untested
+    @classmethod
+    async def get_trades_count(cls, id: UUID4):
+        # TODO: Placeholder
+        # TODO: Check the cache first
+        return await cls.filter(author_id=id).count()
 
 
 class Collection(DTMixin, SharedMixin, models.Model):
