@@ -28,19 +28,19 @@ perms = {
 enchance_only_perms = ['foo.delete', 'foo.hard_delete']
 
 
-@fixturerouter.get('/all', summary='Runs everything in the correct order')
-async def runall():
-    try:
-        async with in_transaction():
-            ll = [
-                await init(),
-                await create_options(),
-                await create_users(),
-                # await create_taxo(),
-            ]
-        return ll
-    except Exception:
-        return 'ERROR'
+# @fixturerouter.get('/all', summary='Runs everything in the correct order')
+# async def runall():
+#     try:
+#         async with in_transaction():
+#             ll = [
+#                 await init(),
+#                 await create_options(),
+#                 await create_users(),
+#                 # await create_taxo(),
+#             ]
+#         return ll
+#     except Exception as e:
+#         ic(e)
 
 
 @fixturerouter.get('/init', summary="Permissions, Groups, and Assignments of each")

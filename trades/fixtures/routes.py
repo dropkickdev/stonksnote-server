@@ -42,8 +42,8 @@ async def addusers():
         ic(e)
 
 
-
-@tradesdevrouter.get('/trades', summary='Trades data: Brokers, Owners, Equity, Marks, and Trades')
+@tradesdevrouter.get('/trades_init', summary='Trades data: Brokers, Owners, Equity, Marks, '
+                                           'and Trades')
 async def init():
     try:
         async with in_transaction():
@@ -63,11 +63,19 @@ async def init():
                 for j in i.get('equity', []):
                     ll.append(Equity(**j, owner=owner, author=usermod, exchange=exchange))
                 await Equity.bulk_create(ll)
-
+            
+        return 'SUCCESS: Trades init'
+    except OperationalError as e:
+        ic(e)
+        
+@tradesdevrouter.get('/trades_data', summary='Marks and Trades data')
+async def trades_data():
+    try:
+        async with in_transaction():
             usermod_list = await UserMod.filter(is_verified=True).only('id')
             tickers = await Equity.all().only('id')
             broker = await Broker.get(name='COL FINANCIAL GROUP, INC.').only('id')
-
+            
             # Marks
             expires = datetime.now(tz=pytz.UTC) + timedelta(days=2)
             for usermod in usermod_list:
@@ -76,7 +84,7 @@ async def init():
                     idx = random.randint(0, len(tickers) - 1)
                     ll.append(Mark(expires=expires, equity=tickers[idx], author=usermod))
                 await Mark.bulk_create(ll)
-
+        
             # Trades
             for usermod in usermod_list:
                 ll = []
@@ -87,12 +95,12 @@ async def init():
                     gross = marketprice * shares
                     fees = gross * 0.00295
                     total = gross + fees
-        
+
                     ll.append(Trade(user=usermod, equity=equity, broker=broker, action='buy',
                                     author=usermod, marketprice=marketprice, shares=shares,
                                     gross=gross, fees=fees, total=total))
                 await Trade.bulk_create(ll)
-                
-        return 'SUCCESS: Trades init'
-    except OperationalError as e:
+
+        return 'SUCCESS: Trades data'
+    except Exception as e:
         ic(e)

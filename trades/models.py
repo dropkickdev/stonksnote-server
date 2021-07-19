@@ -131,6 +131,7 @@ class Trade(DTMixin, SharedMixin, models.Model):
 
     status = fields.DatetimeField(null=True)  # pending, resolved...I think
     note = fields.ForeignKeyField('models.Note', related_name='note_trades', null=True)
+    is_resolved = fields.BooleanField(default=False, index=True)
     meta = fields.JSONField(null=True)
     author = fields.ForeignKeyField('models.UserMod', related_name='author_trades')
 
