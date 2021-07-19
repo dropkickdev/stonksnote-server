@@ -130,7 +130,7 @@ class Trade(DTMixin, SharedMixin, models.Model):
     currency = fields.CharField(max_length=3, default='PHP')
 
     status = fields.DatetimeField(null=True)  # pending, resolved...I think
-    note = fields.ForeignKeyField('models.Note', related_name='note_trades')
+    note = fields.ForeignKeyField('models.Note', related_name='note_trades', null=True)
     meta = fields.JSONField(null=True)
     author = fields.ForeignKeyField('models.UserMod', related_name='author_trades')
 
@@ -141,7 +141,6 @@ class Trade(DTMixin, SharedMixin, models.Model):
 #
     class Meta:
         table = 'trades_trade'
-        unique_together = (('user', 'equity', 'broker'),)
         manager = ActiveManager()
 
     def __str__(self):

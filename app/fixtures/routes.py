@@ -1,3 +1,4 @@
+import random
 from fastapi import APIRouter, FastAPI
 from fastapi_users.user import get_create_user
 from pydantic import EmailStr
@@ -25,6 +26,21 @@ perms = {
     'NoaddGroup': NoaddGroup,
 }
 enchance_only_perms = ['foo.delete', 'foo.hard_delete']
+
+
+@fixturerouter.get('/all', summary='Runs everything in the correct order')
+async def runall():
+    try:
+        async with in_transaction():
+            ll = [
+                await init(),
+                await create_options(),
+                await create_users(),
+                # await create_taxo(),
+            ]
+        return ll
+    except Exception:
+        return 'ERROR'
 
 
 @fixturerouter.get('/init', summary="Permissions, Groups, and Assignments of each")
@@ -155,19 +171,21 @@ async def create_users():
     # from app.auth import userdb
     
     async with in_transaction():
+        groups = await Group.filter(name__in=s.USER_GROUPS)
+        
         # User 1
         userdata = UserCreate(email=EmailStr(VERIFIED_EMAIL_DEMO), password='pass123')
         create_user = get_create_user(userdb, UserDB)
         created_user = await create_user(userdata, safe=True)
         ret = created_user
-        groups = await Group.filter(name__in=s.USER_GROUPS)
 
         user = await UserMod.get(pk=created_user.id)
         user.is_verified = True
         user.is_superuser = True
         await user.save()
         await user.groups.add(*groups)
-        
+        await finish_account_setup(user)
+
         # Perms for User 1
         ll = []
         userperms = await Permission.filter(code__in=enchance_only_perms).only('id')
@@ -175,21 +193,12 @@ async def create_users():
             ll.append(UserPermissions(user=user, permission=perm, author=user))
         await UserPermissions.bulk_create(ll)
 
-        # Wrap up User 1
-        await finish_account_setup(user)
-        
-        # Group or User 1
-        # await user.add_group('StaffGroup')
-    
         # User 2
         userdata = UserCreate(email=EmailStr(UNVERIFIED_EMAIL_DEMO), password='pass123')
         create_user = get_create_user(userdb, UserDB)
         created_user = await create_user(userdata, safe=True)
-        groups = await Group.filter(name__in=s.USER_GROUPS)
         user = await UserMod.get(pk=created_user.id)
         await user.groups.add(*groups)
-
-        # Wrap up User 2
         await finish_account_setup(user)
     
         return 'SUCCESS: Users'
@@ -217,20 +226,7 @@ async def create_taxo():
         return 'SUCCESS: Taxo'
     except Exception as e:
         ic(e)
-        
 
-@fixturerouter.get('/all', summary='Runs everything in the correct order')
-async def runall():
-    try:
-        ll = []
-        ll.append(await init())
-        ll.append(await create_options())
-        ll.append(await create_users())
-        ll.append(await create_taxo())
-        
-        return ll
-    except Exception:
-        return 'ERROR'
 
 
 
