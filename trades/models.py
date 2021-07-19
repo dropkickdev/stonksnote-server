@@ -10,13 +10,14 @@ from app.authentication.models.core import DTMixin, SharedMixin
 
 class Broker(DTMixin, SharedMixin, models.Model):
     name = fields.CharField(max_length=191)
+    brokerno = fields.IntField(null=True)
     rating = fields.FloatField(max_digits=2, decimal_places=1, default=0)
     email = fields.CharField(max_length=191, default='')
     number = fields.CharField(max_length=191, default='')
     url = fields.CharField(max_length=191, default='')
     tel = fields.CharField(max_length=191, default='')
     country = fields.CharField(max_length=2, default='')
-    logo = fields.CharField(max_length=255)
+    logo = fields.CharField(max_length=255, default='')
     
     is_online = fields.BooleanField(default=True)
     is_active = fields.BooleanField(default=True)
@@ -50,12 +51,12 @@ class UserBroker(DTMixin, SharedMixin, models.Model):
 
 class Owner(DTMixin, SharedMixin, models.Model):
     name = fields.CharField(max_length=191)
-    description = fields.CharField(max_length=191)
-    website = fields.CharField(max_length=191)
+    description = fields.CharField(max_length=191, default='')
+    website = fields.CharField(max_length=191, default='')
     founded = fields.DateField(null=True)
     country = fields.CharField(max_length=2, null=True)
     industry = fields.CharField(max_length=191, default='')
-    logo = fields.ForeignKeyField('models.Media', related_name='logo_members')
+    logo = fields.ForeignKeyField('models.Media', related_name='logo_members', null=True)
     meta = fields.JSONField(null=True)
     author = fields.ForeignKeyField('models.UserMod', related_name='author_members')
 
@@ -69,21 +70,21 @@ class Owner(DTMixin, SharedMixin, models.Model):
 
 class Equity(DTMixin, SharedMixin, models.Model):
     ticker = fields.CharField(max_length=10)
-    member = fields.ForeignKeyField('models.Owner', related_name='member_equity')
-    sector = fields.ForeignKeyField('models.Taxonomy', related_name='sector_equity')
+    owner = fields.ForeignKeyField('models.Owner', related_name='member_equity')
+    # TODO: Add fixture
+    sector = fields.ForeignKeyField('models.Taxonomy', related_name='sector_equity', null=True)
+    # TODO: Add fixture
     industry = fields.ForeignKeyField('models.Taxonomy', related_name='industry_equity', null=True)
-    
     exchange = fields.ForeignKeyField('models.Taxonomy', related_name='exchange_equity')
-    category = fields.CharField(max_length=20)  # stock, index, forex, commodity, crypto, preferred
-    currency = fields.CharField(max_length=3)
+    category = fields.SmallIntField(default=1)     # EquityCategoryChoices
     
-    # stage = fields.ForeignKeyField('models.Taxonomy', related_name='stage_equity', null=True)
-    status = fields.CharField(max_length=20)        # active, suspended, etc
+    stage = fields.ForeignKeyField('models.Taxonomy', related_name='stage_equity', null=True)
+    status = fields.CharField(max_length=20, default='active')        # active, suspended, etc
     meta = fields.JSONField(null=True)
     author = fields.ForeignKeyField('models.UserMod', related_name='author_equity')
 
     collections = fields.ManyToManyField('models.Collection', related_name='collection_equity',
-                                    through='trades_equitycollection', backward_key='equity_id')
+                                         through='trades_equitycollection', backward_key='equity_id')
     class Meta:
         table = 'trades_equity'
         manager = ActiveManager()
@@ -126,6 +127,7 @@ class Trade(DTMixin, SharedMixin, models.Model):
     gross = fields.DecimalField(max_digits=12, decimal_places=4, default=0)
     fees = fields.DecimalField(max_digits=12, decimal_places=4, default=0)
     total = fields.DecimalField(max_digits=10, decimal_places=4, default=0)
+    currency = fields.CharField(max_length=3, default='PHP')
 
     status = fields.DatetimeField(null=True)  # pending, resolved...I think
     note = fields.ForeignKeyField('models.Note', related_name='note_trades')

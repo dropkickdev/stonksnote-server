@@ -3,10 +3,11 @@ from fastapi_users.user import get_create_user
 from pydantic import EmailStr
 from tortoise.transactions import in_transaction
 
-from .datastore import options_dict
+from app import ic
+from .datastore import options_dict, taxo_heads, taxo_global
 from app.settings import settings as s
 from app.auth import userdb, UserDB, UserCreate, UserMod, UserPermissions, Group, Permission, \
-    Option, finish_account_setup
+    Option, finish_account_setup, Taxonomy
 from app.tests.data import VERIFIED_EMAIL_DEMO, UNVERIFIED_EMAIL_DEMO
 from app.fixtures.permissions import ContentGroup, AccountGroup, StaffGroup, AdminGroup, \
     NoaddGroup, permission_set, full, banning, group_set
@@ -114,7 +115,7 @@ async def init():
         await group.permissions.add(*ll)
         await Group.get_and_cache(groupname)
         
-        return 'SUCCESS'
+        return 'SUCCESS: Init'
     except Exception:
         return 'ERROR'
 
@@ -137,7 +138,7 @@ async def create_options():
                 elif cat == 'admin':
                     ll.append(Option(name=name, value=val, admin_only=True))
         await Option.bulk_create(ll)
-        return 'SUCCESS'
+        return 'SUCCESS: Options'
     except Exception:
         return 'ERROR'
 
@@ -191,8 +192,32 @@ async def create_users():
         # Wrap up User 2
         await finish_account_setup(user)
     
-        return ret
+        return 'SUCCESS: Users'
 
+
+@fixturerouter.get('/taxo', summary='Taxonomy items')
+async def create_taxo():
+    try:
+        async with in_transaction():
+            usermod = await UserMod.get(email=VERIFIED_EMAIL_DEMO).only('id')
+            
+            ll = []
+            for i in taxo_heads:
+                ll.append(Taxonomy(name=i, is_global=True, author=usermod, tier='base'))
+            await Taxonomy.bulk_create(ll)
+            
+            taxos = await Taxonomy.all().only('id', 'name')
+            ll = []
+            for ins in taxos:
+                if data_list := taxo_global.get(ins.name, None):
+                    for i in data_list:
+                        ll.append(Taxonomy(**i, author=usermod, parent=ins, tier=ins.name))
+            await Taxonomy.bulk_create(ll)
+            
+        return 'SUCCESS: Taxo'
+    except Exception as e:
+        ic(e)
+        
 
 @fixturerouter.get('/all', summary='Runs everything in the correct order')
 async def runall():
@@ -201,6 +226,7 @@ async def runall():
         ll.append(await init())
         ll.append(await create_options())
         ll.append(await create_users())
+        ll.append(await create_taxo())
         
         return ll
     except Exception:

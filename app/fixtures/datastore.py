@@ -12,9 +12,9 @@ collection_default = [
 #     dict(name='invest-soon'),
 # ]
 
-taxonomy_heads = ['markheader', 'exchange', 'tags', 'sector', 'industry']
+taxo_heads = ['markheader', 'exchange', 'tags', 'sector', 'industry']
 
-taxonomy_global = {
+taxo_global = {
     'exchange': [
         dict(name='PSE', label='Philippine Stock Exchange', is_global=True),
         dict(name='SGX', label='Singapore Exchange', is_global=True),
@@ -26,7 +26,16 @@ taxonomy_global = {
         dict(name='FX', label='Forex', is_global=True),
         dict(name='CRYPTO', label='Cryptocurrency', is_global=True),
     ],
-    'sector': [],
+    'sector': [
+        dict(name='Financials', is_global=True),
+        dict(name='Idustrial', is_global=True),
+        dict(name='Holding Firms', is_global=True),
+        dict(name='Property', is_global=True),
+        dict(name='Services', is_global=True),
+        dict(name='Mining and Oil', is_global=True),
+        dict(name='Small, Medium, and Emerging Board', is_global=True),
+        dict(name='ETF', is_global=True),
+    ],
     'industry': [],
     # 'stages': {
     #     'buy_stage': [

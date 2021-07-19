@@ -6,7 +6,9 @@ from app.settings.db import DATABASE
 from app.routes import authrouter, demorouter, grouprouter, permrouter, accountrouter
 from app.fixtures.routes import fixturerouter
 from app.tests.routes import testrouter
+
 from trades.routes import traderoutes
+from trades.fixtures.routes import tradesdevrouter
 
 
 def get_app() -> FastAPI:
@@ -17,12 +19,17 @@ def get_app() -> FastAPI:
     app.include_router(accountrouter, prefix='/account', tags=['Account'])
     app.include_router(grouprouter, prefix='/group', tags=['Group'])
     app.include_router(permrouter, prefix='/permission', tags=['Permission'])
-    
     app.include_router(traderoutes, prefix='/trades', tags=['Trades'])
-
-    app.include_router(testrouter, prefix='/test', tags=['Development'])
+    
+    # Init content
     app.include_router(fixturerouter, prefix='/fixtures', tags=['Fixtures'])
-    app.include_router(demorouter, prefix='/demo', tags=['Development'])
+    
+    # For local use only
+    app.include_router(tradesdevrouter, prefix='/trades/dev', tags=['Dev Data'])
+    
+    # app.include_router(testrouter, prefix='/test', tags=['Development'])
+    # app.include_router(demorouter, prefix='/demo', tags=['Development'])
+    
     
     # Tortoise
     register_tortoise(app, config=DATABASE, generate_schemas=True)
