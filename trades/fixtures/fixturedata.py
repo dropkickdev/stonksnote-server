@@ -1,6 +1,5 @@
 
 
-
 brokers_list = [
     dict(name='UPCC SECURITIES CORP.', brokerno=100),
     dict(name='SECURITIES PLUS. INC.', brokerno=148),
@@ -13,7 +12,6 @@ brokers_list = [
     dict(name='FIRST METRO SECURITIES', brokerno=267),
 ]
 
-
 owner_equity_list = [
     dict(owner=dict(name='COL Financial Group, Inc.'), equity=[dict(ticker='COL')]),
     dict(owner=dict(name='2GO Group, Inc.'), equity=[dict(ticker='2GO')]),
@@ -23,3 +21,4 @@ owner_equity_list = [
     dict(owner=dict(name='Pacifica Holdings, Inc.'), equity=[dict(ticker='PA')]),
     dict(owner=dict(name='San Miguel Corporation'), equity=[dict(ticker='SMC')]),
 ]
+

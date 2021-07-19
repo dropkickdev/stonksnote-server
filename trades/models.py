@@ -61,7 +61,7 @@ class Owner(DTMixin, SharedMixin, models.Model):
     author = fields.ForeignKeyField('models.UserMod', related_name='author_members')
 
     class Meta:
-        table = 'trades_member'
+        table = 'trades_owner'
         manager = ActiveManager()
 
     def __str__(self):
@@ -164,8 +164,8 @@ class Collection(DTMixin, SharedMixin, models.Model):
 
 
 class Mark(DTMixin, SharedMixin, models.Model):
-    symbol = fields.CharField(max_length=10)
-    title = fields.ForeignKeyField('models.Taxonomy', related_name='marks', null=True)
+    equity = fields.ForeignKeyField('models.Equity', related_name='equity_marks')
+    title = fields.ForeignKeyField('models.Taxonomy', related_name='title_marks', null=True)
     expires = fields.DateField(null=True)
     
     meta = fields.JSONField(null=True)
