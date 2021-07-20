@@ -17,6 +17,7 @@ from .resource import TradeData
 
 class Broker(DTMixin, SharedMixin, models.Model):
     name = fields.CharField(max_length=191)
+    short = fields.CharField(max_length=10, default='')
     brokerno = fields.IntField(null=True)
     rating = fields.FloatField(max_digits=2, decimal_places=1, default=0)
     email = fields.CharField(max_length=191, default='')
