@@ -194,7 +194,14 @@ class Trade(DTMixin, SharedMixin, models.Model):
             ic(e)
             
     @classmethod
-    def trades_cleaner(cls, trades: List[dict], fees: Optional[float] = None) -> List[dict]:
+    def trades_cleaner(cls, trades: List[dict], buyfees: Optional[float] = None,
+                       sellfees: Optional[float] = None) -> List[dict]:
+        """
+        Cleans data to be used by the react front-end
+        :param trades:  Result of a DB query in dict format
+        :param buyfees: If there any any fees to include
+        :return:        list
+        """
         ll = []
         for i in trades:
             del i['author_id']
@@ -202,8 +209,10 @@ class Trade(DTMixin, SharedMixin, models.Model):
             i['gainloss'] = 'n/a'
             
             i['total'] = i.get('shares') * i.get('marketprice')
-            if fees:
-                i['total'] = i['total'] * fees
+            if buyfees:
+                i['total'] = i['total'] * buyfees
+            elif sellfees:
+                i['total'] = i['total'] * sellfees
                 
             created_at = i.get('created_at').strftime('%Y-%m-%d')
             i['bought'] = created_at if i.get('action') == 'buy' else ''
