@@ -21,14 +21,13 @@ def get_app() -> FastAPI:
     app.include_router(permrouter, prefix='/permission', tags=['Permission'])
     app.include_router(traderoutes, prefix='/trades', tags=['Trades'])
     
-    # Init content
+    # Project fixtures
     app.include_router(fixturerouter, prefix='/fixtures', tags=['Fixtures'])
     
     # For local use only
-    app.include_router(tradesdevrouter, prefix='/trades/dev', tags=['Dev Data'])
-    
-    # app.include_router(testrouter, prefix='/test', tags=['Development'])
-    # app.include_router(demorouter, prefix='/demo', tags=['Development'])
+    app.include_router(tradesdevrouter, prefix='/trades/dev', tags=['Local development only'])
+    app.include_router(testrouter, prefix='/test', tags=['Development'])
+    app.include_router(demorouter, prefix='/demo', tags=['Development'])
     
     
     # Tortoise

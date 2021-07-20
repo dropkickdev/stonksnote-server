@@ -145,7 +145,6 @@ def test_logout(loop, client, auth_headers_tempdb):
     
     res = client.get('/auth/logout', headers=headers)
     data = res.json()
-    ic(data)
     # assert res.status_code == 200
 
 

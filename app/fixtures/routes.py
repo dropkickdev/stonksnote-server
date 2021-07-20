@@ -201,7 +201,8 @@ async def create_users():
         await user.groups.add(*groups)
         await finish_account_setup(user)
     
-        return 'SUCCESS: Users'
+        # Tests use this ret so keep it as is (don't make it a succcess string)
+        return ret
 
 
 @fixturerouter.get('/taxo', summary='Taxonomy items')

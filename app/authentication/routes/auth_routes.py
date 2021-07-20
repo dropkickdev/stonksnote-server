@@ -229,7 +229,6 @@ async def login(response: Response, credentials: OAuth2PasswordRequestForm = Dep
         'timezone': usermod.timezone,
         **await jwtauth.get_login_response(user, response),
     }
-    ic(data)
     if not user.is_verified:
         data.update(dict(details='User is not verified yet so user cannot log in.'))
     # ic(data)

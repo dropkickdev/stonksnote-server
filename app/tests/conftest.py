@@ -4,6 +4,7 @@ from fastapi.testclient import TestClient
 from fastapi_users.utils import generate_jwt
 from fastapi_users.router.verify import VERIFY_USER_TOKEN_AUDIENCE
 
+from app import ic
 from main import get_app
 from app.fixtures.routes import init, create_users, create_options
 from app.auth import jwtauth, UserDB

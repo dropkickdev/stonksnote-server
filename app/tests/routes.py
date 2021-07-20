@@ -1,7 +1,7 @@
 from typing import Optional
 from fastapi import Response, APIRouter, Depends, Cookie
 
-from app import exceptions as x
+from app import exceptions as x, ic
 from app.auth import current_user
 from app.settings import settings as s
 
