@@ -163,7 +163,15 @@ class Trade(DTMixin, SharedMixin, models.Model):
     # TESTME: Untested
     @classmethod
     async def get_trades(cls, spec: TradeData, user: UserDB, start: Optional[datetime] = None,
-                         end: Optional[datetime] = None):
+                         end: Optional[datetime] = None) -> List[dict]:
+        """
+        Get list of trades for a specified user
+        :param spec:    TradeData token from the route
+        :param user:    User to search for
+        :param start:   Starting date
+        :param end:     Ending date
+        :return:        list
+        """
         try:
             countquery = cls.filter(author_id=user.id)
             tradequery = cls.filter(author_id=user.id)
@@ -188,7 +196,6 @@ class Trade(DTMixin, SharedMixin, models.Model):
             trades = await tradequery
             
             clean_trades = cls.trades_cleaner(trades)
-            ic(clean_trades)
             return clean_trades
         except Exception as e:
             ic(e)
