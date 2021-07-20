@@ -24,13 +24,16 @@ async def add_mark(res: Response, mark: CreateMark, user=Depends(current_user)):
     except Exception:
         raise x.AppError()
 
-@traderoutes.get('/trades')
+@traderoutes.get('')
 async def get_trades(_: Response, spec: dict = Depends(trades_request), user=Depends(current_user)):
     if not await user.has_perm('trade.read'):
         raise x.PermissionDenied()
     try:
-        spec = TradeData(**spec, user=user)
-        trades = await Trade.get_trades(spec)
+        spec = TradeData(**spec)
+        trades = await Trade.get_trades(spec, user=user)
+        if trades:
+            # TODO: Do something with this
+            pass
         return trades
     except (OperationalError, RedisError):
         raise x.ServiceError()

@@ -8,8 +8,8 @@ class LocalSettings(Base):
     USERNAME_MIN: int = 4
     PASSWORD_MIN: int = 4
     
-    # ACCESS_TOKEN_EXPIRE: int = 60 * 15
-    # REFRESH_TOKEN_EXPIRE: int = 3600
+    ACCESS_TOKEN_EXPIRE: int = 3600 * 24 * 365
+    # REFRESH_TOKEN_EXPIRE: int = 3600 * 24 * 365
     # REFRESH_TOKEN_CUTOFF: int = 5      # minutes
     # VERIFY_EMAIL_TTL: int = 180
     # RESET_PASSWORD_TTL: int = 180

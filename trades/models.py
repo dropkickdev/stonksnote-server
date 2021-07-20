@@ -1,9 +1,15 @@
+import math
+
+from datetime import datetime
+from typing import Optional, List, Union
 from tortoise import models, fields
 from tortoise.manager import Manager
 from tortoise.exceptions import OperationalError
-from limeutils import modstr
+from limeutils import modstr, setup_pagination
 from pydantic import UUID4
 
+from app import ic
+from app.auth import UserDB, UserMod
 from app.authentication.models.manager import ActiveManager
 from app.authentication.models.core import DTMixin, SharedMixin
 from .resource import TradeData
@@ -19,6 +25,8 @@ class Broker(DTMixin, SharedMixin, models.Model):
     tel = fields.CharField(max_length=191, default='')
     country = fields.CharField(max_length=2, default='')
     logo = fields.CharField(max_length=255, default='')
+    buyfees = fields.DecimalField(max_digits=6, decimal_places=4, default=0)
+    sellfees = fields.DecimalField(max_digits=6, decimal_places=4, default=0)
     
     is_online = fields.BooleanField(default=True)
     is_active = fields.BooleanField(default=True)
@@ -31,6 +39,10 @@ class Broker(DTMixin, SharedMixin, models.Model):
     
     def __str__(self):
         return modstr(self, 'name')
+    
+    @classmethod
+    async def get_fees(cls, ):
+        pass
 
 
 class UserBroker(DTMixin, SharedMixin, models.Model):
@@ -149,18 +161,55 @@ class Trade(DTMixin, SharedMixin, models.Model):
     
     # TESTME: Untested
     @classmethod
-    async def get_trades(cls, spec: TradeData):
-        # TODO: Placeholder
-        trades = None
-        count = cls.get_trades_count(spec.user.id)
-        return trades
-    
-    # TESTME: Untested
+    async def get_trades(cls, spec: TradeData, user: UserDB, start: Optional[datetime] = None,
+                         end: Optional[datetime] = None):
+        try:
+            countquery = cls.filter(author_id=user.id)
+            tradequery = cls.filter(author_id=user.id)
+            
+            if spec.equity:
+                tradequery = tradequery.filter(equity__ticker__icontains=spec.equity)
+                countquery = countquery.filter(equity__ticker__icontains=spec.equity)
+            if start:
+                tradequery = tradequery.filter(created_at__gte=start)
+                countquery = countquery.filter(created_at__gte=start)
+            if end:
+                tradequery = tradequery.filter(created_at__lte=end)
+                countquery = countquery.filter(created_at__lte=end)
+                
+            count = await countquery.count()
+            orderby, offset, limit = setup_pagination(**spec.dict(), total=count)
+            tradequery = tradequery.order_by(orderby).limit(limit).offset(offset)
+            tradequery = tradequery.values(
+                'id', 'shares', 'action', 'marketprice', 'created_at', 'author_id',
+                'currency', ticker='equity__ticker',
+            )
+            trades = await tradequery
+            
+            clean_trades = cls.trades_cleaner(trades)
+            ic(clean_trades)
+            return clean_trades
+        except Exception as e:
+            ic(e)
+            
     @classmethod
-    async def get_trades_count(cls, id: UUID4):
-        # TODO: Placeholder
-        # TODO: Check the cache first
-        return await cls.filter(author_id=id).count()
+    def trades_cleaner(cls, trades: List[dict], fees: Optional[float] = None) -> List[dict]:
+        ll = []
+        for i in trades:
+            del i['author_id']
+            i['minsell'] = 'n/a'
+            i['gainloss'] = 'n/a'
+            
+            i['total'] = i.get('shares') * i.get('marketprice')
+            if fees:
+                i['total'] = i['total'] * fees
+                
+            created_at = i.get('created_at').strftime('%Y-%m-%d')
+            i['bought'] = created_at if i.get('action') == 'buy' else ''
+            i['sold'] = created_at if i.get('action') == 'sell' else ''
+            
+            ll.append(i)
+        return ll
 
 
 class Collection(DTMixin, SharedMixin, models.Model):

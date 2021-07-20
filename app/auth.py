@@ -21,7 +21,7 @@ from .authentication.Mailman import *
 from .authentication.fapiusers import *
 
 from app.fixtures.datastore import options_dict, collection_default
-from trades.models import Collection
+# from trades.models import Collection
 
 
 
@@ -56,11 +56,12 @@ async def finish_account_setup(usermod: UserMod):
                 ll.append(Option(name=name, value=val, user=usermod))
             await Option.bulk_create(ll)
             
-            # Add collections
-            ll = []
-            for i in collection_default:
-                ll.append(Collection(**i, author=usermod))
-            await Collection.bulk_create(ll)
+            # TODO: Put Collections someplace else. This causes a circular import error.
+            # # Add collections
+            # ll = []
+            # for i in collection_default:
+            #     ll.append(Collection(**i, author=usermod))
+            # await Collection.bulk_create(ll)
     except OperationalError:
         return 'ERROR account_setup'
     
