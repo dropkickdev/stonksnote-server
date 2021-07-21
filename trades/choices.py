@@ -7,7 +7,6 @@ class TradeStatusChoices(str, Enum):
     LATE = 'LATE'
     REVISIT = 'REVISIT'
 
-
 class ActionStatusChoices(str, Enum):
     BUY = 'BUY'
     SELL = 'SELL'
@@ -21,3 +20,7 @@ class EquityCategoryChoices(IntEnum):
     COMMODITY = 4
     CRYPTO = 5
     PREFERRED = 6
+    
+class ActionChoices(IntEnum):
+    BUY = 1
+    SELL = 2

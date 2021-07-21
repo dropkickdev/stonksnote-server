@@ -1,8 +1,11 @@
 import math
-
 from datetime import datetime
 from typing import Optional, List, Union
-from tortoise import models, fields
+from tortoise import models, fields as fl
+from tortoise.fields import (
+    ForeignKeyRelation as FKRel, ManyToManyRelation as M2MRel, ReverseRelation as RRel,
+    ForeignKeyField as FKField, ManyToManyField as M2MField
+)
 from tortoise.manager import Manager
 from tortoise.exceptions import OperationalError
 from limeutils import modstr, setup_pagination
@@ -16,23 +19,26 @@ from .resource import TradeData
 
 
 class Broker(DTMixin, SharedMixin, models.Model):
-    name = fields.CharField(max_length=191)
-    short = fields.CharField(max_length=10, default='')
-    brokerno = fields.IntField(null=True)
-    rating = fields.FloatField(max_digits=2, decimal_places=1, default=0)
-    email = fields.CharField(max_length=191, default='')
-    number = fields.CharField(max_length=191, default='')
-    url = fields.CharField(max_length=191, default='')
-    tel = fields.CharField(max_length=191, default='')
-    country = fields.CharField(max_length=2, default='')
-    logo = fields.CharField(max_length=255, default='')
-    buyfees = fields.DecimalField(max_digits=6, decimal_places=4, default=0)
-    sellfees = fields.DecimalField(max_digits=6, decimal_places=4, default=0)
+    name = fl.CharField(max_length=191)
+    short = fl.CharField(max_length=10, default='')
+    brokerno = fl.IntField(null=True)
+    rating = fl.FloatField(max_digits=2, decimal_places=1, default=0)
+    email = fl.CharField(max_length=191, default='')
+    number = fl.CharField(max_length=191, default='')
+    url = fl.CharField(max_length=191, default='')
+    tel = fl.CharField(max_length=191, default='')
+    country = fl.CharField(max_length=2, default='')
+    logo = fl.CharField(max_length=255, default='')
+    buyfees = fl.DecimalField(max_digits=6, decimal_places=4, default=0)
+    sellfees = fl.DecimalField(max_digits=6, decimal_places=4, default=0)
     
-    is_online = fields.BooleanField(default=True)
-    is_active = fields.BooleanField(default=True)
-    meta = fields.JSONField(null=True)
-    author = fields.ForeignKeyField('models.UserMod', related_name='author_brokers')
+    is_online = fl.BooleanField(default=True)
+    is_active = fl.BooleanField(default=True)
+    meta = fl.JSONField(null=True)
+    author: FKRel['UserMod'] = FKField('models.UserMod', related_name='author_brokers')
+    
+    userbrokers: RRel['UserBroker']
+    trades: RRel['Trade']
     
     class Meta:
         table = 'trades_broker'
@@ -47,13 +53,16 @@ class Broker(DTMixin, SharedMixin, models.Model):
 
 
 class UserBroker(DTMixin, SharedMixin, models.Model):
-    user = fields.ForeignKeyField('models.UserMod', related_name='userbrokers')
-    broker = fields.ForeignKeyField('models.Broker', related_name='userbrokers')
-    wallet = fields.DecimalField(max_digits=13, decimal_places=2, default=0)
-    traded = fields.DecimalField(max_digits=13, decimal_places=2, default=0)
-    status = fields.CharField(max_length=20)
-    is_default = fields.BooleanField(default=True)
-    meta = fields.JSONField(null=True)
+    user: FKRel[UserMod] = FKField('models.UserMod', related_name='userbrokers')
+    broker: FKRel[Broker] = FKField('models.Broker', related_name='userbrokers')
+    wallet = fl.DecimalField(max_digits=13, decimal_places=2, default=0)
+    traded = fl.DecimalField(max_digits=13, decimal_places=2, default=0)
+    status = fl.CharField(max_length=20)
+    
+    is_default = fl.BooleanField(default=True)
+    meta = fl.JSONField(null=True)
+
+    broker_users: M2MRel['UserMod']
     
     class Meta:
         table = 'trades_userbroker'
@@ -64,15 +73,17 @@ class UserBroker(DTMixin, SharedMixin, models.Model):
 
 
 class Owner(DTMixin, SharedMixin, models.Model):
-    name = fields.CharField(max_length=191)
-    description = fields.CharField(max_length=191, default='')
-    website = fields.CharField(max_length=191, default='')
-    founded = fields.DateField(null=True)
-    country = fields.CharField(max_length=2, null=True)
-    industry = fields.CharField(max_length=191, default='')
-    logo = fields.ForeignKeyField('models.Media', related_name='logo_members', null=True)
-    meta = fields.JSONField(null=True)
-    author = fields.ForeignKeyField('models.UserMod', related_name='author_members')
+    name = fl.CharField(max_length=191)
+    description = fl.CharField(max_length=191, default='')
+    website = fl.CharField(max_length=191, default='')
+    founded = fl.DateField(null=True)
+    country = fl.CharField(max_length=2, null=True)
+    industry = fl.CharField(max_length=191, default='')
+    logo: FKRel['Media'] = FKField('models.Media', related_name='logo_members', null=True)  # noqa
+    meta = fl.JSONField(null=True)
+    author: FKRel['UserMod'] = FKField('models.UserMod', related_name='author_owners')
+
+    owner_equity: RRel['owner_equity']
 
     class Meta:
         table = 'trades_owner'
@@ -83,22 +94,21 @@ class Owner(DTMixin, SharedMixin, models.Model):
 
 
 class Equity(DTMixin, SharedMixin, models.Model):
-    ticker = fields.CharField(max_length=10)
-    owner = fields.ForeignKeyField('models.Owner', related_name='member_equity')
-    # TODO: Add fixture
-    sector = fields.ForeignKeyField('models.Taxonomy', related_name='sector_equity', null=True)
-    # TODO: Add fixture
-    industry = fields.ForeignKeyField('models.Taxonomy', related_name='industry_equity', null=True)
-    exchange = fields.ForeignKeyField('models.Taxonomy', related_name='exchange_equity')
-    category = fields.SmallIntField(default=1)     # EquityCategoryChoices
-    
-    stage = fields.ForeignKeyField('models.Taxonomy', related_name='stage_equity', null=True)
-    status = fields.CharField(max_length=20, default='active')        # active, suspended, etc
-    meta = fields.JSONField(null=True)
-    author = fields.ForeignKeyField('models.UserMod', related_name='author_equity')
+    ticker = fl.CharField(max_length=10)
+    owner: FKRel[Owner] = FKField('models.Owner', related_name='owner_equity')
+    sector: FKRel['Taxonomy'] = FKField('models.Taxonomy', related_name='sector_equity', null=True)
+    industry: FKRel['Taxonomy'] = FKField('models.Taxonomy', related_name='industry_equity', null=True)
+    exchange: FKRel['Taxonomy'] = FKField('models.Taxonomy', related_name='exchange_equity')
+    stage: FKRel['Taxonomy'] = FKField('models.Taxonomy', related_name='stage_equity', null=True)
+    category = fl.SmallIntField(default=1)     # EquityCategoryChoices
+    status = fl.CharField(max_length=20, default='active')        # active, suspended, etc
+    meta = fl.JSONField(null=True)
+    author: FKRel['UserMod'] = FKField('models.UserMod', related_name='author_equity')
 
-    collections = fields.ManyToManyField('models.Collection', related_name='collection_equity',
-                                         through='trades_equitycollection', backward_key='equity_id')
+    equity_collections: M2MRel['Collection']
+    stash: RRel['Stash']
+    equity_marks: RRel['Mark']
+
     class Meta:
         table = 'trades_equity'
         manager = ActiveManager()
@@ -106,59 +116,92 @@ class Equity(DTMixin, SharedMixin, models.Model):
     def __str__(self):
         return modstr(self, 'ticker')
 
+
+class Collection(DTMixin, SharedMixin, models.Model):
+    name = fl.CharField(max_length=191)
+    category = fl.CharField(max_length=20)  # equity
+    
+    is_global = fl.BooleanField(default=False)
+    is_locked = fl.BooleanField(default=False)
+    author: FKRel['UserMod'] = FKField('models.UserMod', related_name='author_collections')
+    
+    equity: M2MRel[Equity] = M2MField('models.Equity', related_name='equity_collections',
+                                      through='trades_xequitycollection', backward_key='collection_id')
+    
+    class Meta:
+        table = 'trades_collection'
+        manager = ActiveManager()
+    
+    def __str__(self):
+        return modstr(self, 'name')
+
+
+# class EquityCollection(models.Model):
+#     equity_id = FKField('models.Equity', related_name='equitycollections')
+#     collection_id = FKField('models.Collection', related_name='equitycollections')
+#     # user_id = FKField('models.UserMod', related_name='equitycollections')
+#
+#     class Meta:
+#         table = 'trades_xequitycollection'
+#         manager = ActiveManager()
+#
+#     def __str__(self):
+#         return modstr(self, 'id')
+    
     
 # class EquityHistory(DTMixin, SharedMixin, models.Model):
-#     equity = fields.ForeignKeyField('models.Equity', related_name='equityhistory')
-#     open = fields.DecimalField(max_digits=15, decimal_places=4, null=True)
-#     close = fields.DecimalField(max_digits=15, decimal_places=4, null=True)
-#     high = fields.DecimalField(max_digits=15, decimal_places=4, null=True)
-#     low = fields.DecimalField(max_digits=15, decimal_places=4, null=True)
-#     volume = fields.DecimalField(max_digits=15, decimal_places=4, null=True)
-#     value = fields.DecimalField(max_digits=15, decimal_places=4, null=True)
-#     marketcap = fields.DecimalField(max_digits=21, decimal_places=4, null=True)
-#     trades = fields.DecimalField(max_digits=15, decimal_places=0, null=True)
+#     equity = FKField('models.Equity', related_name='equityhistory')
+#     open = fl.DecimalField(max_digits=15, decimal_places=4, null=True)
+#     close = fl.DecimalField(max_digits=15, decimal_places=4, null=True)
+#     high = fl.DecimalField(max_digits=15, decimal_places=4, null=True)
+#     low = fl.DecimalField(max_digits=15, decimal_places=4, null=True)
+#     volume = fl.DecimalField(max_digits=15, decimal_places=4, null=True)
+#     value = fl.DecimalField(max_digits=15, decimal_places=4, null=True)
+#     marketcap = fl.DecimalField(max_digits=21, decimal_places=4, null=True)
+#     trades = fl.DecimalField(max_digits=15, decimal_places=0, null=True)
 #
 #
-#     todate = fields.JSONField(null=True)        # wtd, mtd, ytd
-#     sma = fields.JSONField(null=True)
-#     rsi = fields.JSONField(null=True)
-#     macd = fields.JSONField(null=True)
-#     atr = fields.JSONField(null=True)
-#     cci = fields.JSONField(null=True)
-#     sts = fields.JSONField(null=True)
+#     todate = fl.JSONField(null=True)        # wtd, mtd, ytd
+#     sma = fl.JSONField(null=True)
+#     rsi = fl.JSONField(null=True)
+#     macd = fl.JSONField(null=True)
+#     atr = fl.JSONField(null=True)
+#     cci = fl.JSONField(null=True)
+#     sts = fl.JSONField(null=True)
 #
-#     meta = fields.JSONField(null=True)
+#     meta = fl.JSONField(null=True)
 
 
 class Trade(DTMixin, SharedMixin, models.Model):
-    user = fields.ForeignKeyField('models.UserMod', related_name='trades')
-    equity = fields.ForeignKeyField('models.Equity', related_name='trades')
-    broker = fields.ForeignKeyField('models.Broker', related_name='trades')
+    # user = FKField('models.UserMod', related_name='trades')
+    # equity = FKField('models.Equity', related_name='trades')
+    stash: FKRel['Stash'] = FKField('models.Stash', related_name='trades')
+    broker: FKRel['Broker'] = FKField('models.Broker', related_name='trades')
 
-    action = fields.CharField(max_length=20)    # buy, sell
-    marketprice = fields.DecimalField(max_digits=12, decimal_places=4, default=0)
-    shares = fields.IntField(default=0)
-    gross = fields.DecimalField(max_digits=12, decimal_places=4, default=0)
-    fees = fields.DecimalField(max_digits=12, decimal_places=4, default=0)
-    total = fields.DecimalField(max_digits=10, decimal_places=4, default=0)
-    currency = fields.CharField(max_length=3, default='PHP')
+    action = fl.SmallIntField()    # ActionChoices
+    marketprice = fl.DecimalField(max_digits=12, decimal_places=4, default=0)
+    shares = fl.IntField(default=0)
+    gross = fl.DecimalField(max_digits=12, decimal_places=4, default=0)
+    fees = fl.DecimalField(max_digits=12, decimal_places=4, default=0)
+    total = fl.DecimalField(max_digits=10, decimal_places=4, default=0)
+    currency = fl.CharField(max_length=3, default='PHP')
 
-    status = fields.DatetimeField(null=True)  # pending, resolved...I think
-    note = fields.ForeignKeyField('models.Note', related_name='note_trades', null=True)
-    is_resolved = fields.BooleanField(default=False, index=True)
-    meta = fields.JSONField(null=True)
-    author = fields.ForeignKeyField('models.UserMod', related_name='author_trades')
+    status = fl.DatetimeField(null=True)  # pending, resolved...I think
+    note: FKRel['Note'] = FKField('models.Note', related_name='note_trades', null=True)
+    
+    is_resolved = fl.BooleanField(default=False, index=True)
+    meta = fl.JSONField(null=True)
+    author: FKRel['UserMod'] = FKField('models.UserMod', related_name='author_trades')
 
-    tags = fields.ManyToManyField('models.Taxonomy', related_name='tag_trades',
-                                  through='trades_tags', backward_key='trade_id')
-    collections = fields.ManyToManyField('models.Collection', related_name='collection_trades',
-                                         through='trades_tradecollection', backward_key='trade_id')
+    tags: M2MRel['Taxonomy'] = M2MField('models.Taxonomy', related_name='tag_trades',
+                                        through='trades_xtags', backward_key='trade_id')
+    
     class Meta:
         table = 'trades_trade'
         manager = ActiveManager()
 
     def __str__(self):
-        return f'{self.user}:{self.equity}'
+        return modstr(self, 'stash__equity')
     
     # TESTME: Untested
     @classmethod
@@ -220,7 +263,8 @@ class Trade(DTMixin, SharedMixin, models.Model):
                 i['total'] = i['total'] * buyfees
             elif sellfees:
                 i['total'] = i['total'] * sellfees
-                
+            
+            # TODO: Convert to user's local time via offset
             created_at = i.get('created_at').strftime('%Y-%m-%d')
             i['bought'] = created_at if i.get('action') == 'buy' else ''
             i['sold'] = created_at if i.get('action') == 'sell' else ''
@@ -229,29 +273,32 @@ class Trade(DTMixin, SharedMixin, models.Model):
         return ll
 
 
-class Collection(DTMixin, SharedMixin, models.Model):
-    name = fields.CharField(max_length=191)
-    category = fields.CharField(max_length=20)      # equity
-    is_global = fields.BooleanField(default=False)
-    is_locked = fields.BooleanField(default=False)
-    author = fields.ForeignKeyField('models.UserMod', related_name='author_collections')
+class Stash(DTMixin, SharedMixin, models.Model):
+    equity: FKRel[Equity] = FKField('models.Equity', related_name='stash')
+    shares = fl.IntField(default=0)
+    is_resolved = fl.BooleanField(default=False)
+
+    # collections = M2MField('models.Collection', related_name='collection_stash',
+    #                                      through='trades_stashcollection', backward_key='trade_id')
+    
+    trades: RRel['Trade']
 
     class Meta:
-        table = 'trades_collection'
+        table = 'trades_stash'
         manager = ActiveManager()
 
     def __str__(self):
-        return modstr(self, 'name')
+        return modstr(self, 'equity')
 
 
 class Mark(DTMixin, SharedMixin, models.Model):
-    equity = fields.ForeignKeyField('models.Equity', related_name='equity_marks')
-    title = fields.ForeignKeyField('models.Taxonomy', related_name='title_marks', null=True)
-    expires = fields.DateField(null=True)
+    equity: FKRel[Equity] = FKField('models.Equity', related_name='equity_marks')
+    title: FKRel['Taxonomy'] = FKField('models.Taxonomy', related_name='title_marks', null=True)
+    expires = fl.DateField(null=True)
     
-    meta = fields.JSONField(null=True)
-    is_active = fields.BooleanField(default=True)
-    author = fields.ForeignKeyField('models.UserMod', related_name='author_marks')
+    is_active = fl.BooleanField(default=True)
+    meta = fl.JSONField(null=True)
+    author: FKRel['UserMod'] = FKField('models.UserMod', related_name='author_marks')
 
     class Meta:
         table = 'trades_mark'
@@ -261,21 +308,23 @@ class Mark(DTMixin, SharedMixin, models.Model):
 
 
 # class Trade(DTMixin, SharedMixin, models.Model):
-#     equity = fields.ForeignKeyField('models.Equity', related_name='equity_trades')
-#     broker = fields.ForeignKeyField('models.Taxonomy', related_name='broker_trades', null=True)
-#     status = fields.CharField(max_length=20)
+#     equity = FKField('models.Equity', related_name='equity_trades')
+#     broker = FKField('models.Taxonomy', related_name='broker_trades', null=True)
+#     status = fl.CharField(max_length=20)
 ##
-#     stoploss = fields.DecimalField(max_digits=10, decimal_places=4, default=0)
-#     takeprofit = fields.DecimalField(max_digits=10, decimal_places=4, default=0)
+#     stoploss = fl.DecimalField(max_digits=10, decimal_places=4, default=0)
+#     takeprofit = fl.DecimalField(max_digits=10, decimal_places=4, default=0)
 #
 
-#     gainloss = fields.DecimalField(max_digits=10, decimal_places=4)
+#     gainloss = fl.DecimalField(max_digits=10, decimal_places=4)
 #
-#     meta = fields.JSONField(null=True)
-#     author = fields.ForeignKeyField('models.UserMod', related_name='author_trades')
+#     meta = fl.JSONField(null=True)
+#     author: fl.ForeignKeyRelation['UserMod'] = FKField('models.UserMod',
+#     related_name='author_trades'
+    #     )
 #
-#     is_action = fields.BooleanField(default=False)          # For action
-#     resolved_at = fields.DatetimeField(null=True)           # For action
+#     is_action = fl.BooleanField(default=False)          # For action
+#     resolved_at = fl.DatetimeField(null=True)           # For action
 #
 
 #

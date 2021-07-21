@@ -21,6 +21,6 @@ class TradeData(BaseModel):
 
 async def trades_request(
     p: int = 1, t: str = 'all', i: int = 20,
-    s: str = 'created_at', d: str = 'desc', e: Optional[str] = None
+    s: str = 'updated_at', d: str = 'desc', e: Optional[str] = None
 ):
     return dict(page=p, tab=t, items=i, sort=s, direction=d, equity=e)

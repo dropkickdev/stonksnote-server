@@ -2,6 +2,10 @@ import pytz
 from datetime import datetime
 from typing import Optional, List
 from tortoise import models, fields
+from tortoise.fields import (
+    ForeignKeyRelation as FKRel, ManyToManyRelation as M2MRel, ReverseRelation as RRel,
+    ForeignKeyField as FKField, ManyToManyField as M2MField
+)
 from tortoise.manager import Manager
 from limeutils import modstr
 
@@ -43,7 +47,7 @@ class SharedMixin(object):
 class Option(SharedMixin, models.Model):
     name = fields.CharField(max_length=20)
     value = fields.CharField(max_length=191)
-    user = fields.ForeignKeyField('models.UserMod', related_name='options', null=True)
+    user: FKRel['UserMod'] = FKField('models.UserMod', related_name='options', null=True)
     is_active = fields.BooleanField(default=True)
     admin_only = fields.BooleanField(default=False)
     deleted_at = fields.DatetimeField(null=True)
@@ -58,7 +62,7 @@ class Option(SharedMixin, models.Model):
 
 
 class Visitor(models.Model):
-    user = fields.ForeignKeyField('models.UserMod', related_name='visitors')
+    user: FKRel['UserMod'] = FKField('models.UserMod', related_name='visitors')
     browser = fields.CharField(max_length=99)
     browser_fam = fields.CharField(max_length=99)
     browser_ver = fields.CharField(max_length=99)
@@ -94,11 +98,19 @@ class Taxonomy(DTMixin, SharedMixin, models.Model):
     label = fields.CharField(max_length=191, default='')  # Longer version of name
     description = fields.CharField(max_length=191, default='')
     sort = fields.SmallIntField(default=100)
-    parent = fields.ForeignKeyField('models.Taxonomy', related_name='parent_taxs', null=True)
+    parent: FKRel['Taxonomy'] = FKField('models.Taxonomy', related_name='parent_taxs', null=True)
 
     is_verified = fields.BooleanField(default=True)
     is_global = fields.BooleanField(default=False)
-    author = fields.ForeignKeyField('models.UserMod', related_name='author_taxs', null=True)
+    author: FKRel['UserMod'] = FKField('models.UserMod', related_name='author_taxs', null=True)
+
+    tag_trades: M2MRel['Trade']
+    parent_taxs: RRel['Taxonomy']
+    sector_equity: RRel['Equity']
+    industry_equity: RRel['Equity']
+    exchange_equity: RRel['Equity']
+    stage_equity: RRel['Equity']
+    title_marks: RRel['Mark']
 
     class Meta:
         table = 'core_taxonomy'
@@ -143,7 +155,7 @@ class Taxonomy(DTMixin, SharedMixin, models.Model):
 
 
 # # class HashMod(SharedMixin, models.Model):
-# #     user = fields.ForeignKeyField('models.UserMod', related_name='hashes')
+#: FKRel['XXX' #     user = FKField()('models.UserMod', related_name='hashes')
 # #     hash = fields.CharField(max_length=199, index=True)
 # #     use_type = fields.CharField(max_length=20)
 # #     expires = fields.DatetimeField(null=True)
@@ -160,7 +172,7 @@ class Token(DTMixin, SharedMixin, models.Model):
     token = fields.CharField(max_length=128, unique=True)
     expires = fields.DatetimeField(index=True)
     is_blacklisted = fields.BooleanField(default=False)
-    author = fields.ForeignKeyField('models.UserMod', related_name='author_tokens')
+    author: FKRel['UserMod'] = FKField('models.UserMod', related_name='author_tokens')
 
     class Meta:
         table = 'auth_token'
@@ -181,7 +193,9 @@ class Media(DTMixin, SharedMixin, models.Model):
     
     is_active = fields.BooleanField(default=True)
     meta = fields.JSONField(null=True)
-    author = fields.ForeignKeyField('models.UserMod', related_name='author_media')
+    author: FKRel['UserMod'] = FKField('models.UserMod', related_name='author_media')
+
+    logo_members: RRel['Owner']
     
     class Meta:
         table = 'core_media'
@@ -195,7 +209,9 @@ class Note(DTMixin, SharedMixin, models.Model):
     note = fields.TextField()
     status = fields.CharField(max_length=20)
     meta = fields.JSONField(null=True)
-    author = fields.ForeignKeyField('models.UserMod', related_name='author_notes')
+    author: FKRel['UserMod'] = FKField('models.UserMod', related_name='author_notes')
+
+    note_trades: RRel['Trade']
     
     class Meta:
         table = 'core_note'

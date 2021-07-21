@@ -1,6 +1,10 @@
 from typing import Union, Optional, List
 from limeutils import modstr, valid_str_only
 from tortoise import fields, models
+from tortoise.fields import (
+    ForeignKeyRelation as FKRel, ManyToManyRelation as M2MRel, ReverseRelation as RRel,
+    ForeignKeyField as FKField, ManyToManyField as M2MField
+)
 from tortoise.manager import Manager
 from fastapi_users.db import TortoiseBaseUserModel
 from tortoise.exceptions import BaseORMException
@@ -10,6 +14,8 @@ from redis.exceptions import RedisError
 from app import settings as s, exceptions as x, cache, red, ic
 from app.validation import UpdateGroupVM, UpdatePermissionVM
 from app.authentication.models.core import DTMixin, ActiveManager, SharedMixin, Option
+
+
 
 
 class UserMod(DTMixin, TortoiseBaseUserModel):
@@ -33,14 +39,31 @@ class UserMod(DTMixin, TortoiseBaseUserModel):
     timezone = fields.CharField(max_length=10, default='+00:00')
     website = fields.CharField(max_length=20, default='')
 
-    groups = fields.ManyToManyField('models.Group', related_name='group_users',
-                                    through='auth_user_groups', backward_key='user_id')
-    permissions = fields.ManyToManyField('models.Permission', related_name='permission_users',
-                                         through='auth_user_permissions', backward_key='user_id')
+    groups: M2MRel['Group'] = M2MField('models.Group', related_name='group_users',
+                                       through='auth_user_groups', backward_key='user_id')
+    permissions: M2MRel['Permission'] = M2MField('models.Permission', related_name='permission_users',
+                                                 through='auth_user_permissions', backward_key='user_id')
 
     # Project-specific
-    brokers = fields.ManyToManyField('models.UserBroker', related_name='broker_users',
-                                     through='trades_userbroker', backward_key='user_id')
+    brokers: M2MRel['UserBroker'] = M2MField('models.UserBroker', related_name='broker_users',
+                                             through='trades_xuserbroker', backward_key='user_id')
+
+    author_brokers: RRel['Broker']
+    author_taxs: RRel['Taxonomy']
+    author_owners: RRel['Owner']
+    author_equity: RRel['Equity']
+    author_collections: RRel['Collection']
+    author_tokens: RRel['Token']
+    author_media: RRel['Media']
+    author_notes: RRel['Note']
+    author_trades: RRel['Trade']
+    author_marks: RRel['Mark']
+    author_userpermissions: RRel['UserPermissions']
+    options: RRel['Option']
+    visitors: RRel['Visitor']
+    userbrokers: RRel['UserBroker']
+    userpermissions: RRel['UserPermissions']
+    oauth_accounts: RRel['OAuthAccount']
 
     full = Manager()
 
@@ -356,9 +379,9 @@ class UserMod(DTMixin, TortoiseBaseUserModel):
     
 
 class UserPermissions(models.Model):
-    user = fields.ForeignKeyField('models.UserMod', related_name='userpermissions')
-    permission = fields.ForeignKeyField('models.Permission', related_name='userpermissions')
-    author = fields.ForeignKeyField('models.UserMod', related_name='userpermissions_author')
+    user: FKRel[UserMod] = FKField('models.UserMod', related_name='userpermissions')
+    permission: FKRel['Permission'] = FKField('models.Permission', related_name='userpermissions')
+    author: FKRel[UserMod] = FKField('models.UserMod', related_name='author_userpermissions')
     created_at = fields.DatetimeField(auto_now_add=True)
     
     class Meta:
@@ -372,9 +395,10 @@ class Group(SharedMixin, models.Model):
     deleted_at = fields.DatetimeField(null=True)
     created_at = fields.DatetimeField(auto_now_add=True)
     
-    permissions: models.ManyToManyRelation['Permission'] = \
-        fields.ManyToManyField('models.Permission', related_name='groups',
-                               through='auth_group_permissions', backward_key='group_id')
+    permissions: M2MRel['Permission'] = M2MField('models.Permission', related_name='groups',
+                                                 through='auth_group_permissions', backward_key='group_id')
+    group_users: M2MRel['UserMod']
+    
     class Meta:
         table = 'auth_group'
         manager = ActiveManager()
@@ -491,6 +515,10 @@ class Permission(SharedMixin, models.Model):
     
     # groups: fields.ReverseRelation[Group]
     # permission_users: fields.ReverseRelation['UserMod']
+
+    permission_users: M2MRel[UserMod]
+    groups: M2MRel[Group]
+    userpermissions: FKRel[UserPermissions]
     
     class Meta:
         table = 'auth_permission'
@@ -546,7 +574,7 @@ class OAuthAccount(SharedMixin, models.Model):
     account_email = fields.CharField(null=False, max_length=255)
     
     # Keep the related_name to "oauth_accounts". Fastapi-users uses it.
-    user = fields.ForeignKeyField("models.UserMod", related_name="oauth_accounts")
+    user: FKRel[UserMod] = FKField("models.UserMod", related_name="oauth_accounts")
     updated_at = fields.DatetimeField(auto_now=True)
     created_at = fields.DatetimeField(auto_now_add=True)
     
