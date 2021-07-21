@@ -27,7 +27,7 @@ async def addusers():
             
             # User n
             for num in range(1, 4):
-                userdata = UserCreate(email=EmailStr(f'devuser-{num}@gmail.com'), 
+                userdata = UserCreate(email=EmailStr(f'devuser-{num}@gmail.com'),
                                       password='pass123')
                 create_user = get_create_user(userdb, UserDB)
                 created_user = await create_user(userdata, safe=True)

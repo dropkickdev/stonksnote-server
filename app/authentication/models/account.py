@@ -57,6 +57,7 @@ class UserMod(DTMixin, TortoiseBaseUserModel):
     author_media: RRel['Media']
     author_notes: RRel['Note']
     author_trades: RRel['Trade']
+    author_stash: RRel['Stash']
     author_marks: RRel['Mark']
     author_userpermissions: RRel['UserPermissions']
     options: RRel['Option']

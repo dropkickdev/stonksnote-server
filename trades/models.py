@@ -136,50 +136,12 @@ class Collection(DTMixin, SharedMixin, models.Model):
         return modstr(self, 'name')
 
 
-# class EquityCollection(models.Model):
-#     equity_id = FKField('models.Equity', related_name='equitycollections')
-#     collection_id = FKField('models.Collection', related_name='equitycollections')
-#     # user_id = FKField('models.UserMod', related_name='equitycollections')
-#
-#     class Meta:
-#         table = 'trades_xequitycollection'
-#         manager = ActiveManager()
-#
-#     def __str__(self):
-#         return modstr(self, 'id')
-    
-    
-# class EquityHistory(DTMixin, SharedMixin, models.Model):
-#     equity = FKField('models.Equity', related_name='equityhistory')
-#     open = fl.DecimalField(max_digits=15, decimal_places=4, null=True)
-#     close = fl.DecimalField(max_digits=15, decimal_places=4, null=True)
-#     high = fl.DecimalField(max_digits=15, decimal_places=4, null=True)
-#     low = fl.DecimalField(max_digits=15, decimal_places=4, null=True)
-#     volume = fl.DecimalField(max_digits=15, decimal_places=4, null=True)
-#     value = fl.DecimalField(max_digits=15, decimal_places=4, null=True)
-#     marketcap = fl.DecimalField(max_digits=21, decimal_places=4, null=True)
-#     trades = fl.DecimalField(max_digits=15, decimal_places=0, null=True)
-#
-#
-#     todate = fl.JSONField(null=True)        # wtd, mtd, ytd
-#     sma = fl.JSONField(null=True)
-#     rsi = fl.JSONField(null=True)
-#     macd = fl.JSONField(null=True)
-#     atr = fl.JSONField(null=True)
-#     cci = fl.JSONField(null=True)
-#     sts = fl.JSONField(null=True)
-#
-#     meta = fl.JSONField(null=True)
-
-
 class Trade(DTMixin, SharedMixin, models.Model):
-    # user = FKField('models.UserMod', related_name='trades')
-    # equity = FKField('models.Equity', related_name='trades')
     stash: FKRel['Stash'] = FKField('models.Stash', related_name='trades')
     broker: FKRel['Broker'] = FKField('models.Broker', related_name='trades')
 
     action = fl.SmallIntField()    # ActionChoices
-    marketprice = fl.DecimalField(max_digits=12, decimal_places=4, default=0)
+    price = fl.DecimalField(max_digits=12, decimal_places=4, default=0)
     shares = fl.IntField(default=0)
     gross = fl.DecimalField(max_digits=12, decimal_places=4, default=0)
     fees = fl.DecimalField(max_digits=12, decimal_places=4, default=0)
@@ -187,6 +149,7 @@ class Trade(DTMixin, SharedMixin, models.Model):
     currency = fl.CharField(max_length=3, default='PHP')
 
     status = fl.DatetimeField(null=True)  # pending, resolved...I think
+    basetrade: FKRel['Trade'] = FKField('models.Trade', related_name='basetrade_trades', null=True)
     note: FKRel['Note'] = FKField('models.Note', related_name='note_trades', null=True)
     
     is_resolved = fl.BooleanField(default=False, index=True)
@@ -195,6 +158,8 @@ class Trade(DTMixin, SharedMixin, models.Model):
 
     tags: M2MRel['Taxonomy'] = M2MField('models.Taxonomy', related_name='tag_trades',
                                         through='trades_xtags', backward_key='trade_id')
+
+    basetrade_trades: RRel['Trade']
     
     class Meta:
         table = 'trades_trade'
@@ -203,6 +168,7 @@ class Trade(DTMixin, SharedMixin, models.Model):
     def __str__(self):
         return modstr(self, 'stash__equity')
     
+    # TODO: Update this since the Stash table was added
     # TESTME: Untested
     @classmethod
     async def get_trades(cls, spec: TradeData, user: UserDB, start: Optional[datetime] = None,
@@ -233,7 +199,7 @@ class Trade(DTMixin, SharedMixin, models.Model):
             orderby, offset, limit = setup_pagination(**spec.dict(), total=count)
             tradequery = tradequery.order_by(orderby).limit(limit).offset(offset)
             tradequery = tradequery.values(
-                'id', 'shares', 'action', 'marketprice', 'created_at', 'author_id',
+                'id', 'shares', 'action', 'price', 'created_at', 'author_id',
                 'currency', ticker='equity__ticker',
             )
             trades = await tradequery
@@ -242,7 +208,9 @@ class Trade(DTMixin, SharedMixin, models.Model):
             return clean_trades
         except Exception as e:
             ic(e)
-            
+
+    # TODO: Update this since the Stash table was added
+    # TESTME: Untested
     @classmethod
     def trades_cleaner(cls, trades: List[dict], buyfees: Optional[float] = None,
                        sellfees: Optional[float] = None) -> List[dict]:
@@ -258,7 +226,7 @@ class Trade(DTMixin, SharedMixin, models.Model):
             i['minsell'] = 'n/a'
             i['gainloss'] = 'n/a'
             
-            i['total'] = i.get('shares') * i.get('marketprice')
+            i['total'] = i.get('shares') * i.get('price')
             if buyfees:
                 i['total'] = i['total'] * buyfees
             elif sellfees:
@@ -276,10 +244,10 @@ class Trade(DTMixin, SharedMixin, models.Model):
 class Stash(DTMixin, SharedMixin, models.Model):
     equity: FKRel[Equity] = FKField('models.Equity', related_name='stash')
     shares = fl.IntField(default=0)
-    is_resolved = fl.BooleanField(default=False)
 
-    # collections = M2MField('models.Collection', related_name='collection_stash',
-    #                                      through='trades_stashcollection', backward_key='trade_id')
+    is_resolved = fl.BooleanField(default=False, index=True)
+    meta = fl.JSONField(null=True)
+    author: FKRel['UserMod'] = FKField('models.UserMod', related_name='author_stash')
     
     trades: RRel['Trade']
 
@@ -305,32 +273,24 @@ class Mark(DTMixin, SharedMixin, models.Model):
         manager = ActiveManager()
 
 
-
-
-# class Trade(DTMixin, SharedMixin, models.Model):
-#     equity = FKField('models.Equity', related_name='equity_trades')
-#     broker = FKField('models.Taxonomy', related_name='broker_trades', null=True)
-#     status = fl.CharField(max_length=20)
-##
-#     stoploss = fl.DecimalField(max_digits=10, decimal_places=4, default=0)
-#     takeprofit = fl.DecimalField(max_digits=10, decimal_places=4, default=0)
+# class EquityHistory(DTMixin, SharedMixin, models.Model):
+#     equity = FKField('models.Equity', related_name='equityhistory')
+#     open = fl.DecimalField(max_digits=15, decimal_places=4, null=True)
+#     close = fl.DecimalField(max_digits=15, decimal_places=4, null=True)
+#     high = fl.DecimalField(max_digits=15, decimal_places=4, null=True)
+#     low = fl.DecimalField(max_digits=15, decimal_places=4, null=True)
+#     volume = fl.DecimalField(max_digits=15, decimal_places=4, null=True)
+#     value = fl.DecimalField(max_digits=15, decimal_places=4, null=True)
+#     marketcap = fl.DecimalField(max_digits=21, decimal_places=4, null=True)
+#     trades = fl.DecimalField(max_digits=15, decimal_places=0, null=True)
 #
-
-#     gainloss = fl.DecimalField(max_digits=10, decimal_places=4)
+#
+#     todate = fl.JSONField(null=True)        # wtd, mtd, ytd
+#     sma = fl.JSONField(null=True)
+#     rsi = fl.JSONField(null=True)
+#     macd = fl.JSONField(null=True)
+#     atr = fl.JSONField(null=True)
+#     cci = fl.JSONField(null=True)
+#     sts = fl.JSONField(null=True)
 #
 #     meta = fl.JSONField(null=True)
-#     author: fl.ForeignKeyRelation['UserMod'] = FKField('models.UserMod',
-#     related_name='author_trades'
-    #     )
-#
-#     is_action = fl.BooleanField(default=False)          # For action
-#     resolved_at = fl.DatetimeField(null=True)           # For action
-#
-
-#
-#     class Meta:
-#         table = 'trades_trade'
-#         manager = ActiveManager()
-#
-#     def __str__(self):
-#         return f'{self.id}:{self.equity}:{self.shares} shares'              # noqa
