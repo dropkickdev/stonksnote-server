@@ -17,6 +17,7 @@ class Base(BaseSettings):
     USE_TZ: bool = True
     TIMEZONE: str = 'UTC'
     LANGUAGE_CODE: str = 'en-us'
+    CURRENCY: str = 'PHP'
     
     # Authentication
     ALGORITHM: str = 'HS256'

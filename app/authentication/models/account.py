@@ -38,7 +38,7 @@ class UserMod(DTMixin, TortoiseBaseUserModel):
     zipcode = fields.CharField(max_length=20, default='')
     timezone = fields.CharField(max_length=10, default='+00:00')
     website = fields.CharField(max_length=20, default='')
-    currency = fields.CharField(max_length=5, default='PHP')    # User's primary currency
+    currency = fields.CharField(max_length=5, default=s.CURRENCY)    # User's primary currency
 
     groups: M2MRel['Group'] = M2MField('models.Group', related_name='group_users',
                                        through='auth_user_groups', backward_key='user_id',
@@ -382,6 +382,10 @@ class UserMod(DTMixin, TortoiseBaseUserModel):
         user.groups = await self.get_groups(force_query=True)
         red.set(partialkey, cache.prepareuser_dict(user.dict()))
         return user.groups
+    
+    async def get_currency(self):
+        # TODO: Check the cache first
+        return self.currency or s.CURRENCY
     
 
 class UserPermissions(models.Model):
