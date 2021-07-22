@@ -86,6 +86,6 @@ options_dict = {
         'language': 'en',
         'show_currency_symbol': True,
         'date_format': '%Y-%m-%d %H:%M:%S',
-        
+        'currency': ''
     },
 }
