@@ -38,6 +38,7 @@ class UserMod(DTMixin, TortoiseBaseUserModel):
     zipcode = fields.CharField(max_length=20, default='')
     timezone = fields.CharField(max_length=10, default='+00:00')
     website = fields.CharField(max_length=20, default='')
+    currency = fields.CharField(max_length=5, default='PHP')    # User's primary currency
 
     groups: M2MRel['Group'] = M2MField('models.Group', related_name='group_users',
                                        through='auth_user_groups', backward_key='user_id',
