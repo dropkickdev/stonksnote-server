@@ -55,7 +55,7 @@ class UserBrokers(DTMixin, SharedMixin, models.Model):
     traded = fl.DecimalField(max_digits=13, decimal_places=2, default=0)
     status = fl.CharField(max_length=20, default='active')
     
-    is_default = fl.BooleanField(default=True)
+    is_primary = fl.BooleanField(default=False)
     meta = fl.JSONField(null=True)
 
     broker_users: M2MRel['UserMod']
