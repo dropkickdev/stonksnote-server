@@ -8,6 +8,7 @@ from tortoise.fields import (
 from limeutils import modstr, setup_pagination
 
 from app import ic
+from app.settings import settings as s
 from app.auth import UserDB, UserMod
 from app.authentication.models.manager import ActiveManager
 from app.authentication.models.core import DTMixin, SharedMixin, Taxonomy, Note
@@ -138,14 +139,14 @@ class Trade(DTMixin, SharedMixin, models.Model):
     broker: FKRel['Broker'] = FKField('models.Broker', related_name='trades')
 
     action = fl.SmallIntField()    # ActionChoices
-    price = fl.DecimalField(max_digits=12, decimal_places=4, default=0)
+    price = fl.DecimalField(max_digits=12, decimal_places=4)
     shares = fl.IntField(default=0)
     gross = fl.DecimalField(max_digits=12, decimal_places=4, default=0)
     fees = fl.DecimalField(max_digits=12, decimal_places=4, default=0)
     total = fl.DecimalField(max_digits=10, decimal_places=4, default=0)
-    currency = fl.CharField(max_length=3, default='PHP')
+    currency = fl.CharField(max_length=3, default=s.CURRENCY)
 
-    status = fl.DatetimeField(null=True)  # pending, resolved...I think
+    status = fl.CharField(max_length=20, default='')  # Not sure what it's for right now
     basetrade: FKRel['Trade'] = FKField('models.Trade', related_name='basetrade_trades', null=True)
     note: FKRel['Note'] = FKField('models.Note', related_name='note_trades', null=True)
     
