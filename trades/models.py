@@ -33,7 +33,7 @@ class Broker(DTMixin, SharedMixin, models.Model):
     meta = fl.JSONField(null=True)
     author: FKRel['UserMod'] = FKField('models.UserMod', related_name='author_brokers')
     
-    userbrokers: RRel['UserBroker']
+    userbrokers: RRel['UserBrokers']
     trades: RRel['Trade']
     
     class Meta:
@@ -48,12 +48,12 @@ class Broker(DTMixin, SharedMixin, models.Model):
         pass
 
 
-class UserBroker(DTMixin, SharedMixin, models.Model):
+class UserBrokers(DTMixin, SharedMixin, models.Model):
     user: FKRel[UserMod] = FKField('models.UserMod', related_name='userbrokers')
     broker: FKRel[Broker] = FKField('models.Broker', related_name='userbrokers')
     wallet = fl.DecimalField(max_digits=13, decimal_places=2, default=0)
     traded = fl.DecimalField(max_digits=13, decimal_places=2, default=0)
-    status = fl.CharField(max_length=20)
+    status = fl.CharField(max_length=20, default='active')
     
     is_default = fl.BooleanField(default=True)
     meta = fl.JSONField(null=True)
@@ -61,7 +61,7 @@ class UserBroker(DTMixin, SharedMixin, models.Model):
     broker_users: M2MRel['UserMod']
     
     class Meta:
-        table = 'trades_userbroker'
+        table = 'trades_xuserbrokers'
         manager = ActiveManager()
     
     def __str__(self):
@@ -122,7 +122,8 @@ class Collection(DTMixin, SharedMixin, models.Model):
     author: FKRel['UserMod'] = FKField('models.UserMod', related_name='author_collections')
     
     equity: M2MRel[Equity] = M2MField('models.Equity', related_name='equity_collections',
-                                      through='trades_xequitycollection', backward_key='collection_id')
+                                      through='trades_xequitycollections',
+                                      backward_key='collection_id', forward_key='equity_id')
     
     class Meta:
         table = 'trades_collection'
@@ -153,7 +154,8 @@ class Trade(DTMixin, SharedMixin, models.Model):
     author: FKRel['UserMod'] = FKField('models.UserMod', related_name='author_trades')
 
     tags: M2MRel['Taxonomy'] = M2MField('models.Taxonomy', related_name='tag_trades',
-                                        through='trades_xtags', backward_key='trade_id')
+                                        through='trades_xtags', backward_key='trade_id',
+                                        forward_key='taxonomy_id')
 
     basetrade_trades: RRel['Trade']
     

@@ -40,13 +40,17 @@ class UserMod(DTMixin, TortoiseBaseUserModel):
     website = fields.CharField(max_length=20, default='')
 
     groups: M2MRel['Group'] = M2MField('models.Group', related_name='group_users',
-                                       through='auth_user_groups', backward_key='user_id')
+                                       through='auth_user_groups', backward_key='user_id',
+                                       forward_key='group_id')
     permissions: M2MRel['Permission'] = M2MField('models.Permission', related_name='permission_users',
-                                                 through='auth_user_permissions', backward_key='user_id')
+                                                 through='auth_user_permissions',
+                                                 backward_key='user_id',
+                                                 forward_key='permission_id')
 
     # Project-specific
-    brokers: M2MRel['UserBroker'] = M2MField('models.UserBroker', related_name='broker_users',
-                                             through='trades_xuserbroker', backward_key='user_id')
+    brokers: M2MRel['UserBrokers'] = M2MField('models.UserBrokers', related_name='broker_users',
+                                              through='trades_xuserbrokers',
+                                              backward_key='user_id', forward_key='broker_id')
 
     author_brokers: RRel['Broker']
     author_taxs: RRel['Taxonomy']
@@ -62,7 +66,7 @@ class UserMod(DTMixin, TortoiseBaseUserModel):
     author_userpermissions: RRel['UserPermissions']
     options: RRel['Option']
     visitors: RRel['Visitor']
-    userbrokers: RRel['UserBroker']
+    userbrokers: RRel['UserBrokers']
     userpermissions: RRel['UserPermissions']
     oauth_accounts: RRel['OAuthAccount']
 
