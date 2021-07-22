@@ -28,19 +28,19 @@ perms = {
 enchance_only_perms = ['foo.delete', 'foo.hard_delete']
 
 
-# @fixturerouter.get('/all', summary='Runs everything in the correct order')
-# async def runall():
-#     try:
-#         async with in_transaction():
-#             ll = [
-#                 await init(),
-#                 await create_options(),
-#                 await create_users(),
-#                 # await create_taxo(),
-#             ]
-#         return ll
-#     except Exception as e:
-#         ic(e)
+@fixturerouter.get('/all', summary='Runs everything in the correct order')
+async def runall():
+    try:
+        async with in_transaction():
+            ll = [
+                await init(),
+                await create_options(),
+                await create_users(),
+                await create_taxo(),
+            ]
+        return ll
+    except Exception as e:
+        ic(e)
 
 
 @fixturerouter.get('/init', summary="Permissions, Groups, and Assignments of each")
@@ -177,14 +177,13 @@ async def create_users():
         userdata = UserCreate(email=EmailStr(VERIFIED_EMAIL_DEMO), password='pass123')
         create_user = get_create_user(userdb, UserDB)
         created_user = await create_user(userdata, safe=True)
-        ret = created_user
 
         user = await UserMod.get(pk=created_user.id)
         user.is_verified = True
         user.is_superuser = True
         await user.save()
         await user.groups.add(*groups)
-        await finish_account_setup(user)
+        user = await finish_account_setup(user)
 
         # Perms for User 1
         ll = []
@@ -192,6 +191,7 @@ async def create_users():
         for perm in userperms:
             ll.append(UserPermissions(user=user, permission=perm, author=user))
         await UserPermissions.bulk_create(ll)
+        ret = user
 
         # User 2
         userdata = UserCreate(email=EmailStr(UNVERIFIED_EMAIL_DEMO), password='pass123')

@@ -1,15 +1,21 @@
 from typing import Optional
 from fastapi import Response, APIRouter, Depends, Cookie
+from tortoise.query_utils import Prefetch
 
 from app import exceptions as x, ic
 from app.auth import current_user
 from app.settings import settings as s
+from trades.models import Equity, Owner
+from trades import get_foo
 
 
 testrouter = APIRouter()
 
 @testrouter.post('/dev_user_data')
 async def dev_user_data(_: Response, user=Depends(current_user)):
+    # x = await get_foo()
+    # ic(vars(x))
+    # ic(vars(x.owner))
     return user
 
 

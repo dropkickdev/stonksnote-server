@@ -45,23 +45,24 @@ async def finish_account_setup(usermod: UserMod):
     :return:
     """
     try:
-        async with in_transaction():
-            # Populate display field
-            usermod.display = ''.join((usermod.email.split('@')[0]).split('.'))
-            await usermod.save(update_fields=['display'])
-            
-            # Add user options
-            ll = []
-            for name, val in options_dict['user'].items():
-                ll.append(Option(name=name, value=val, user=usermod))
-            await Option.bulk_create(ll)
-            
-            # TODO: Put Collections someplace else. This causes a circular import error.
-            # # Add collections
-            # ll = []
-            # for i in collection_default:
-            #     ll.append(Collection(**i, author=usermod))
-            # await Collection.bulk_create(ll)
+        # Populate display field
+        usermod.display = ''.join((usermod.email.split('@')[0]).split('.'))
+        await usermod.save(update_fields=['display'])
+        
+        # Add user options
+        ll = []
+        for name, val in options_dict['user'].items():
+            ll.append(Option(name=name, value=val, user=usermod))
+        await Option.bulk_create(ll)
+        
+        # TODO: Put Collections someplace else. This causes a circular import error.
+        # # Add collections
+        # ll = []
+        # for i in collection_default:
+        #     ll.append(Collection(**i, author=usermod))
+        # await Collection.bulk_create(ll)
+        
+        return usermod
     except OperationalError:
         return 'ERROR account_setup'
     
