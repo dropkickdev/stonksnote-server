@@ -1,20 +1,16 @@
-import math
 from datetime import datetime
-from typing import Optional, List, Union
+from typing import Optional, List
 from tortoise import models, fields as fl
 from tortoise.fields import (
     ForeignKeyRelation as FKRel, ManyToManyRelation as M2MRel, ReverseRelation as RRel,
     ForeignKeyField as FKField, ManyToManyField as M2MField
 )
-from tortoise.manager import Manager
-from tortoise.exceptions import OperationalError
 from limeutils import modstr, setup_pagination
-from pydantic import UUID4
 
 from app import ic
 from app.auth import UserDB, UserMod
 from app.authentication.models.manager import ActiveManager
-from app.authentication.models.core import DTMixin, SharedMixin
+from app.authentication.models.core import DTMixin, SharedMixin, Taxonomy, Note
 from .resource import TradeData
 
 
@@ -216,9 +212,10 @@ class Trade(DTMixin, SharedMixin, models.Model):
                        sellfees: Optional[float] = None) -> List[dict]:
         """
         Cleans data to be used by the react front-end
-        :param trades:  Result of a DB query in dict format
-        :param buyfees: If there any any fees to include
-        :return:        list
+        :param trades:      Result of a DB query in dict format
+        :param buyfees:     If there any any fees to include from broker
+        :param sellfees:    If there any any fees to include from broker
+        :return:            list
         """
         ll = []
         for i in trades:
