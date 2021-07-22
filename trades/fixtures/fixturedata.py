@@ -1,15 +1,15 @@
 
 
 brokers_list = [
-    dict(name='UPCC SECURITIES CORP.', brokerno=100),
-    dict(name='SECURITIES PLUS. INC.', brokerno=148),
-    dict(name='CITICORP SECURITIES (RP)', brokerno=134),
-    dict(name='EQUITIWORLD SECURITIES,IN', brokerno=153),
-    dict(name='JSG SECURITIES, INC.', brokerno=169),
-    dict(name='UNITED PACIFIC SECURITIES', brokerno=163),
-    dict(name='AAA SOUTHEAST EQUITIES, I', brokerno=237),
-    dict(name='COL FINANCIAL GROUP, INC.', brokerno=203),
-    dict(name='FIRST METRO SECURITIES', brokerno=267),
+    dict(name='UPCC SECURITIES CORP.', brokerno=100, buyfees=0.00295, sellfees=0.00600),
+    dict(name='SECURITIES PLUS. INC.', brokerno=148, buyfees=0.00295, sellfees=0.00600),
+    dict(name='CITICORP SECURITIES (RP)', brokerno=134, buyfees=0.00295, sellfees=0.00600),
+    dict(name='EQUITIWORLD SECURITIES,IN', brokerno=153, buyfees=0.00295, sellfees=0.00600),
+    dict(name='JSG SECURITIES, INC.', brokerno=169, buyfees=0.00295, sellfees=0.00600),
+    dict(name='UNITED PACIFIC SECURITIES', brokerno=163, buyfees=0.00295, sellfees=0.00600),
+    dict(name='AAA SOUTHEAST EQUITIES, I', brokerno=237, buyfees=0.00295, sellfees=0.00600),
+    dict(name='COL FINANCIAL GROUP, INC.', brokerno=203, buyfees=0.00295, sellfees=0.00600),
+    dict(name='FIRST METRO SECURITIES', brokerno=267, buyfees=0.00295, sellfees=0.00600),
 ]
 
 owner_equity_list = [
