@@ -33,7 +33,8 @@ class Broker(DTMixin, SharedMixin, models.Model):
     is_active = fl.BooleanField(default=True)
     meta = fl.JSONField(null=True)
     author: FKRel['UserMod'] = FKField('models.UserMod', related_name='author_brokers')
-    
+
+    broker_users: M2MRel['UserMod']
     userbrokers: RRel['UserBrokers']
     trades: RRel['Trade']
     
@@ -58,8 +59,6 @@ class UserBrokers(DTMixin, SharedMixin, models.Model):
     
     is_primary = fl.BooleanField(default=False)
     meta = fl.JSONField(null=True)
-
-    broker_users: M2MRel['UserMod']
     
     class Meta:
         table = 'trades_xuserbrokers'

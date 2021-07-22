@@ -49,9 +49,9 @@ class UserMod(DTMixin, TortoiseBaseUserModel):
                                                  forward_key='permission_id')
 
     # Project-specific
-    brokers: M2MRel['UserBrokers'] = M2MField('models.UserBrokers', related_name='broker_users',
-                                              through='trades_xuserbrokers',
-                                              backward_key='user_id', forward_key='broker_id')
+    brokers: M2MRel['Broker'] = M2MField('models.Broker', related_name='broker_users',
+                                         through='trades_xuserbrokers',
+                                         backward_key='user_id', forward_key='broker_id')
 
     author_brokers: RRel['Broker']
     author_taxs: RRel['Taxonomy']
