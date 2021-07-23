@@ -161,44 +161,47 @@ async def dev_user_data(_: Response, user=Depends(current_user)):
     #    vars(broker1),
     #    the_sql)
 
-    # For multiple items: Same thing except a list is returned instead of a single object
+    # For multiple items + Relationship table + Nested Prefetch
+    # Same thing except a list is returned instead of a single object
+    # Remember, only() works if you're NOT using the M2M field instead traversing the tables
+    # manuolly
     x = query_fiter.only('id', 'display').prefetch_related(
-        # only() no use here
-        Prefetch('brokers', queryset=Broker.all().only('id', 'name'), to_attr='broker_list'),
-        # only() works here though
-        Prefetch('userbrokers', UserBrokers.all().only('id', 'is_primary', 'user_id', 'broker_id'),
-                 to_attr='xxx')
+        # only() no use here (brokers is M2M)
+        Prefetch('brokers', Broker.all().only('id', 'name'), to_attr='broker_list'),
+        # only() works here as noted above
+        Prefetch('userbrokers', UserBrokers.all().only('id', 'is_primary', 'user_id', 'broker_id')
+             .prefetch_related(
+                Prefetch('broker', Broker.all().only('id', 'name', 'author_id').prefetch_related(
+                    Prefetch('author', UserMod.all().only('id', 'display'), to_attr='zzz')
+                ), to_attr='yyy')
+            ), to_attr='xxx'),
     )
     c3 = await x
     the_sql1 = x.sql()
     broker1 = c3[0].broker_list[0]
     userbrokers1 = c3[0].xxx[0]
-    # the_sql2 = userbrokers1 = c3[0].xxx[0].sql()
+    boo1 = userbrokers1.yyy
+    auth1 = boo1.author
+    broker2 = c3[0].broker_list[1]
+    userbrokers2 = c3[0].xxx[1]
+    boo2 = userbrokers2.yyy
+    auth2 = boo2.author
     ic(type(c3), c3, vars(c3[0]), type(c3[0]),
        type(broker1), vars(broker1), type(userbrokers1), vars(userbrokers1),
+       type(boo1), vars(boo1), type(auth1), vars(auth1),
+       type(broker2), vars(broker2),
+       type(userbrokers2), vars(userbrokers2),
+       type(boo2), vars(boo2), type(auth2), vars(auth2),
        the_sql1,
     )
     
-    # M2M Relationship Table
+    # VERDICT:
+    #   - Using the M2M fields do not allow the use of only()
+    #   - Alternatively, traverse the tables intead of using the shortcut M2M fields and only()
+    #   works
+    #   - Nested Prefetch works when traversing tnhe tables manually. Won't work if you're using
+    #   the M2M fields
     
-    # usermod_list = await UserMod.filter(is_verified=True)\
-    #     .prefetch_related('brokers').only('id', 'email')
-    # usermod_list = await UserMod.filter(is_verified=True).prefetch_related(
-    #     Prefetch('brokers', queryset=Broker.all()),
-    #     Prefetch('userbrokers', queryset=UserBrokers.all()),
-    # ).only('id', 'email')
-    # equity_list = await Equity.all().values_list('id', flat=True)
-
-    # try:
-    #     async with in_transaction():
-    #         base = await Taxonomy.create(name='currency', is_global=True, author=usermod, tier='base')
-    #         ll = []
-    #         for i in taxo_global['currency']:
-    #             ll.append(Taxonomy(name=i, is_global=True, author=usermod, tier='currency', parent=base))
-    #         await Taxonomy.bulk_create(ll)
-    #         return True
-    # except Exception as e:
-    #     ic(e)
     return True
 
 
