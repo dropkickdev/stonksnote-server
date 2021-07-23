@@ -221,7 +221,13 @@ async def create_taxo():
             for ins in taxos:
                 if data_list := taxo_global.get(ins.name, None):
                     for i in data_list:
-                        ll.append(Taxonomy(**i, author=usermod, parent=ins, tier=ins.name))
+                        if isinstance(i, dict):
+                            # For dict
+                            ll.append(Taxonomy(**i, author=usermod, parent=ins, tier=ins.name))
+                        elif isinstance(i, (str, int, float)):
+                            # For str, int, float
+                            ll.append(Taxonomy(name=i, is_global=True, author=usermod,
+                                               parent=ins, tier=ins.name))
             await Taxonomy.bulk_create(ll)
             
         return 'SUCCESS: Taxo'

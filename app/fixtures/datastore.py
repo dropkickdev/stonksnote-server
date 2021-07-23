@@ -12,7 +12,7 @@ collection_default = [
 #     dict(name='invest-soon'),
 # ]
 
-taxo_heads = ['markheader', 'exchange', 'tags', 'sector', 'industry']
+taxo_heads = ['markheader', 'exchange', 'tags', 'sector', 'industry', 'currency']
 
 taxo_global = {
     'exchange': [
@@ -37,6 +37,10 @@ taxo_global = {
         dict(name='ETF', is_global=True),
     ],
     'industry': [],
+    'currency': ['USD', 'EUR', 'JPY', 'GBP', 'AUD', 'CAD', 'CHF', 'CNY', 'HKD', 'NZD', 'SEK',
+                 'KRW', 'SGD', 'MOK', 'MXN', 'INR', 'RUB', 'ZAR', 'TRY', 'BRL', 'TWD', 'DKK',
+                 'PLN', 'THB', 'IDR', 'HUF', 'CZK', 'ILS', 'CLP', 'PHP', 'AED', 'COP', 'SAR',
+                 'MYR', 'RON']
     # 'stages': {
     #     'buy_stage': [
     #         dict(label='Buying', is_global=True, description='The buying process'),
