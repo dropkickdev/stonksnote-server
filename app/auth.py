@@ -47,13 +47,16 @@ async def finish_account_setup(usermod: UserMod):
     try:
         # Populate display field
         usermod.display = ''.join((usermod.email.split('@')[0]).split('.'))
-        await usermod.save(update_fields=['display'])
+        usermod.currency = s.CURRENCY
+        await usermod.save(update_fields=['display', 'currency'])
         
         # Add user options
         ll = []
         for name, val in options_dict['user'].items():
             ll.append(Option(name=name, value=val, user=usermod))
         await Option.bulk_create(ll)
+        
+        
         
         # TODO: Put Collections someplace else. This causes a circular import error.
         # # Add collections
@@ -68,7 +71,7 @@ async def finish_account_setup(usermod: UserMod):
     
 
 async def register_callback(user: UserDB, _: Request):
-    usermod = await UserMod.get_or_none(pk=user.id).only('id', 'display', 'email')
+    usermod = await UserMod.get_or_none(pk=user.id).only('id', 'display', 'email', 'currency')
 
     # TODO: Add default tags
     await finish_account_setup(usermod)

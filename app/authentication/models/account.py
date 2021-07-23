@@ -36,9 +36,9 @@ class UserMod(DTMixin, TortoiseBaseUserModel):
     address2 = fields.CharField(max_length=191, default='')
     country = fields.CharField(max_length=2, default='')
     zipcode = fields.CharField(max_length=20, default='')
-    timezone = fields.CharField(max_length=10, default='+00:00')
+    timezone = fields.CharField(max_length=10, default=s.USER_TIMEZONE)
     website = fields.CharField(max_length=20, default='')
-    currency = fields.CharField(max_length=5, default=s.CURRENCY)    # User's primary currency
+    currency = fields.CharField(max_length=5, default=s.CURRENCY)
 
     groups: M2MRel['Group'] = M2MField('models.Group', related_name='group_users',
                                        through='auth_user_groups', backward_key='user_id',
@@ -47,8 +47,7 @@ class UserMod(DTMixin, TortoiseBaseUserModel):
                                                  through='auth_user_permissions',
                                                  backward_key='user_id',
                                                  forward_key='permission_id')
-
-    # Project-specific
+    # Stonksnote
     brokers: M2MRel['Broker'] = M2MField('models.Broker', related_name='broker_users',
                                          through='trades_xuserbrokers',
                                          backward_key='user_id', forward_key='broker_id')
