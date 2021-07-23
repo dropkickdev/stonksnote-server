@@ -4,6 +4,7 @@ from typing import Optional, List
 from tortoise import models, fields
 from tortoise.fields import (
     ForeignKeyRelation as FKRel, ManyToManyRelation as M2MRel, ReverseRelation as RRel,
+    ForeignKeyNullableRelation as FKNullRel,
     ForeignKeyField as FKField, ManyToManyField as M2MField
 )
 from tortoise.manager import Manager
@@ -98,7 +99,7 @@ class Taxonomy(DTMixin, SharedMixin, models.Model):
     label = fields.CharField(max_length=191, default='')  # Longer version of name
     description = fields.CharField(max_length=191, default='')
     sort = fields.SmallIntField(default=100)
-    parent: FKRel['Taxonomy'] = FKField('models.Taxonomy', related_name='parent_taxs', null=True)
+    parent: FKNullRel['Taxonomy'] = FKField('models.Taxonomy', related_name='parent_taxs', null=True)
 
     is_verified = fields.BooleanField(default=True)
     is_global = fields.BooleanField(default=False)
