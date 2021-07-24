@@ -41,34 +41,82 @@ async def dev_user_data(_: Response, user=Depends(current_user)):
     
     # 2.1: FK Table
     query = Equity.get(ticker='COL')
-    # b1 = await query.values('id', 'ticker', 'status', 'owner__author__display',
-    #                         xyz='owner__name')    # 1q, only/values_list not allowed
-    # the_sql = query.values('id', 'ticker', 'status', 'owner__author__display',
-    #                        xyz='owner__name').sql()                                     # 1q
-    # ic(type(b1), b1, the_sql)
     
-    # # 2.2: 2q are run. See next for prefetch_related
-    # b2 = await query.only('id', 'owner_id')
-    # the_sql1 = query.only('id', 'owner_id').sql()
-    # the_owner = await b2.owner.only('id', 'name')     # Addt'l query
-    # the_sql2 = b2.owner.only('id', 'name').sql()
-    # ic(type(b2), vars(b2), type(the_owner), vars(the_owner), the_sql1, the_sql2)
-
-    # # 2.3:  Using prefetch_related. There is a new 'owner' field which has the owner instance.
-    # # The 'owner_id' field must be present.
-    # b2 = await query.only('id', 'owner_id').prefetch_related('owner')           # All fields
-    # the_sql1 = query.only('id', 'owner_id').prefetch_related('owner').sql()
-    # the_owner = b2.owner                              # A query NOT needed
-    # ic(type(b2), vars(b2), type(the_owner), vars(the_owner), the_sql1)
+    """
+    PATTERN 1: ForeignKeyField
+    USES:
+    - You only want to get the data and not edit in any way
+    - Shows getting data for nested and non-nested tables
+    - owner__author__display and name contain field data not an object
+    TOTAL QUERIES: 1
+    """
+    torun = query.values('id', 'ticker', 'owner__author__display', name='owner__name')  # partial fields
+    pat1 = await torun
+    ic(type(pat1), pat1)
     
-    # # 2.3a: Prefetch let's you select the fields you want. The 'owner_id' field must be present.
-    # x = query.only('id', 'owner_id').prefetch_related(
-    #     Prefetch('owner', queryset=Owner.all().only('id', 'name'))      # Select fields
-    # )
-    # b3a = await x
-    # the_sql1 = x.sql()
-    # the_owner = b3a.owner
-    # ic(type(b3a), vars(b3a), type(the_owner), vars(the_owner), the_sql1)
+    """
+    PATTERN 2a: ForeignKeyField
+    USES:
+    - The owner attr contains an object w/ partial fields
+    - Queries to add the owner attr with owner object to the a2 instance
+    - The owner_id field must exist
+    TOTAL QUERIES: 2
+    """
+    torun = query.only('id', 'owner_id')    # partial fields
+    pat2a = await torun
+    the_owner = await pat2a.owner.only('id', 'name')   # +1q, partial fields
+    ic(type(pat2a), vars(pat2a), type(the_owner), vars(the_owner))
+    
+    """
+    PATTERN 2b: ForeignKeyField
+    USES:
+    - The owner attr contains an object w/ all fields
+    - Variation of PATTERN 2a using fetch_related
+    - fetch_related is called by the QuerySet OBJECT. The owner_id field must exist.
+    - Better to use prefetch_related instead
+    TOTAL QUERIES: 2
+    """
+    torun = query.only('id', 'owner_id')    # partial fields
+    pat2b = await torun
+    await pat2b.fetch_related('owner')  # +1q, all fields
+    the_owner = pat2b.owner
+    ic(type(pat2b), vars(pat2b), type(the_owner), vars(the_owner))
+    
+    """
+    PATTERN 2c: ForeignKeyField
+    USES:
+    - The owner attr contains an object w/ all fields
+    - Variation of PATTERN 2b using prefetch_related
+    - prefetch_related is called by the QuerySet CLASS. The owner_id field must exist.
+    TIP: If you're only reading, use values() or values_list() to produce a more efficient query
+    TOTAL QUERIES: 2
+    """
+    query = query.only('id', 'owner_id')        # 1q, partial fields
+    torun = query.prefetch_related('owner')     # +1q, all fields
+    # torun = query.only('id', 'owner_id').prefetch_related('owner__anotherfield')  # 3q, all fields
+    pat2c = await torun
+    the_owner = pat2c.owner
+    ic(type(pat2c), vars(pat2c), type(the_owner), vars(the_owner))
+    
+    """
+    PATTERN 2d (Recommended): ForeignKeyField
+    USES:
+    - The owner attr contains an object w/ partial fields
+    - Variation of PATTERN 2c using prefetch_related + Prefetch
+    - Allows for partial fields. The owner_id field must exist.
+    TIP: If you're only reading, use values() or values_list() to produce a more efficient query
+    TOTAL QUERIES: 2
+    """
+    query = query.only('id', 'owner_id')    # 1q, partial fields
+    torun = query.prefetch_related(
+        Prefetch('owner', Owner.all().only('id', 'name')),       # +1q, partial fields
+        # Prefetch('field1', SomeModel.all()),      # +1q, all fields
+        # Prefetch('field2', SomeTable.filter(foo=True).all()), # +1q, all fields, list
+        # 'field3'   # +1q, all fields, might be list
+    )
+    pat2d = await torun
+    the_owner = pat2d.owner
+    ic(type(pat2d), vars(pat2d), type(the_owner), vars(the_owner))
     
     # # 2.3b: Variation of 2.3a with more FK fields
     # b3b = await query.only('id', 'owner_id', 'author_id', 'exchange_id').prefetch_related(
@@ -102,14 +150,13 @@ async def dev_user_data(_: Response, user=Depends(current_user)):
     # ic(vars(b3c), vars(the_owner), vars(the_author), the_sql1)
     
     
-    # VERDICT: For FKs use 2.3 prefetch_related and Prefetch so you get the object. BUT if you only
-    # want to display the data and not manipulate or call any methods then use 2.1 instead.
+    # VERDICT: For FKs use prefetch_related + Prefetch for partial fields. BUT if you only want
+    # to get the data and not manipulate the object or call methods then use PATTERN 1 instead
     # NOTE:
-    #   - prefetch_related: For the QuerySet. Object is added to the final result.
-    #   - fetch_related: For the instance of the QuerySet. Object is added to the final result.
-    #     Using this will result in a +1 query because you're appending a field that was missing.
-    #   - Both work for FKs and M2Ms
-    #   - Either way, prefetch_related and fetch_related must have the field_id or it won't work.
+    #   - prefetch_related: Used on the QuerySet (recommended)
+    #   - fetch_related: Used on the QuerySet instance
+    #   - Both work for FKs and M2Ms and do the same thing
+    #   - For both make sure you called the field_id in the main query or it won't work.
     
     # -------------------------------------------------------------------------------------------
 
