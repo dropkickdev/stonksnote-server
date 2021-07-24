@@ -105,8 +105,8 @@ async def dev_user_data(_: Response, user=Depends(current_user)):
     # VERDICT: For FKs use 2.3 prefetch_related and Prefetch so you get the object. BUT if you only
     # want to display the data and not manipulate or call any methods then use 2.1 instead.
     # NOTE:
-    #   - prefetch_related: For the INITIAL QUERY. Includes the object in the final result.
-    #   - fetch_related: For the OBJECT from the initial query. Add the object to the final result.
+    #   - prefetch_related: For the QuerySet. Object is added to the final result.
+    #   - fetch_related: For the instance of the QuerySet. Object is added to the final result.
     #     Using this will result in a +1 query because you're appending a field that was missing.
     #   - Both work for FKs and M2Ms
     #   - Either way, prefetch_related and fetch_related must have the field_id or it won't work.
@@ -166,41 +166,46 @@ async def dev_user_data(_: Response, user=Depends(current_user)):
     # Remember, only() works if you're NOT using the M2M field instead traversing the tables
     # manuolly
     x = query_fiter.only('id', 'display').prefetch_related(
-        # only() no use here (brokers is M2M)
-        Prefetch('brokers', Broker.all().only('id', 'name'), to_attr='broker_list'),
-        # only() works here as noted above
-        Prefetch('userbrokers', UserBrokers.all().only('id', 'is_primary', 'user_id', 'broker_id')
-             .prefetch_related(
-                Prefetch('broker', Broker.all().only('id', 'name', 'author_id').prefetch_related(
-                    Prefetch('author', UserMod.all().only('id', 'display'), to_attr='zzz')
-                ), to_attr='yyy')
-            ), to_attr='xxx'),
+        # # only() no use here (brokers is M2M)
+        Prefetch('brokers', Broker.all(), to_attr='broker_list'),
+        # # only() works here as noted above
+        # Prefetch('userbrokers', UserBrokers.all().only('id', 'is_primary', 'user_id', 'broker_id')
+        #      .prefetch_related(
+        #         Prefetch('broker', Broker.all().only('id', 'name', 'author_id').prefetch_related(
+        #             Prefetch('author', UserMod.all().only('id', 'display'), to_attr='zzz')
+        #         ), to_attr='yyy')
+        #     ), to_attr='xxx'),
     )
     c3 = await x
     the_sql1 = x.sql()
-    broker1 = c3[0].broker_list[0]
-    userbrokers1 = c3[0].xxx[0]
-    boo1 = userbrokers1.yyy
-    auth1 = boo1.author
-    broker2 = c3[0].broker_list[1]
-    userbrokers2 = c3[0].xxx[1]
-    boo2 = userbrokers2.yyy
-    auth2 = boo2.author
-    ic(type(c3), c3, vars(c3[0]), type(c3[0]),
-       type(broker1), vars(broker1), type(userbrokers1), vars(userbrokers1),
-       type(boo1), vars(boo1), type(auth1), vars(auth1),
-       type(broker2), vars(broker2),
-       type(userbrokers2), vars(userbrokers2),
-       type(boo2), vars(boo2), type(auth2), vars(auth2),
-       the_sql1,
-    )
+    # broker1 = c3[0].broker_list[0]
+    # userbrokers1 = c3[0].xxx[0]
+    # boo1 = userbrokers1.yyy
+    # auth1 = boo1.author
+    # broker2 = c3[0].broker_list[1]
+    # userbrokers2 = c3[0].xxx[1]
+    # boo2 = userbrokers2.yyy
+    # auth2 = boo2.author
+    # ic(type(c3), c3, vars(c3[0]), type(c3[0]),
+    #    type(broker1), vars(broker1), type(userbrokers1), vars(userbrokers1),
+    #    type(boo1), vars(boo1), type(auth1), vars(auth1),
+    #    type(broker2), vars(broker2),
+    #    type(userbrokers2), vars(userbrokers2),
+    #    type(boo2), vars(boo2), type(auth2), vars(auth2),
+    #    the_sql1,
+    # )
+
+    for i in c3:
+        ic(f'{type(i)}: {i.display}')
+        for j in i.brokers:
+            ic(j)
+    ic(the_sql1)
     
     # VERDICT:
-    #   - Using the M2M fields do not allow the use of only()
-    #   - Alternatively, traverse the tables intead of using the shortcut M2M fields and only()
-    #   works
-    #   - Nested Prefetch works when traversing tnhe tables manually. Won't work if you're using
-    #   the M2M fields
+    #   - Using the M2M fields do not allow the use of only() for Prefetch
+    #   - Alternatively, traverse the tables intead of using the M2M fields and only() works
+    #   - Nested Prefetch works when traversing the tables manually. Won't work if you're using
+    #     the M2M fields
     
     return True
 
