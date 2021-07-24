@@ -8,7 +8,8 @@ from .production import *
 
 class Settings:
 
-    def __new__(cls, env):                                                      # noqa
+    def __new__(cls, env: str):                                                      # noqa
+        env = env.lower()
         if env in ['local', 'dev', 'development']:
             return LocalSettings()
         elif env == 'staging':

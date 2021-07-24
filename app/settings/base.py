@@ -8,6 +8,7 @@ load_dotenv(override=True)
 
 class Base(BaseSettings):
     DEBUG: bool = os.getenv('DEBUG')
+    ENV: str = os.getenv('ENV')
     SITE_NAME: str = 'Stonksnote'
     APPCODE: str = 'STONKS'  # No spaces
     
