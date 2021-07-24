@@ -3,7 +3,7 @@ from fastapi import Response, APIRouter, Depends, Cookie
 from tortoise.query_utils import Prefetch
 from tortoise.transactions import in_transaction
 
-from app import exceptions as x, ic
+from app import exceptions as x, ic, logger as log
 from app.auth import current_user, UserMod, Taxonomy, Permission
 from app.settings import settings as s
 from trades.models import Equity, Owner, Broker, UserBrokers
@@ -201,12 +201,17 @@ async def dev_user_data(_: Response, user=Depends(current_user)):
             ic(j)
     ic(the_sql1)
     
+    
     # VERDICT:
     #   - Using the M2M fields do not allow the use of only() for Prefetch
     #   - Alternatively, traverse the tables intead of using the M2M fields and only() works
     #   - Nested Prefetch works when traversing the tables manually. Won't work if you're using
     #     the M2M fields
     
+    # log.info('info here')
+    # log.warning('warning here')
+    # log.error('error here')
+
     return True
 
 
