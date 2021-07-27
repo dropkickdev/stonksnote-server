@@ -31,7 +31,11 @@ def readcookie(refresh_token: Optional[str] = Cookie(None)):
 
 
 @testrouter.get('/tortoise')
-async def dev_user_data(_: Response, user=Depends(current_user)):
+async def dev_tortoise(_: Response, user=Depends(current_user)):
+    log.warning('foo')
+    log.error('error')
+    log.critical('critical')
+    log.info('info')
     
     # FK Relationships
     query = Equity.get(ticker='COL')

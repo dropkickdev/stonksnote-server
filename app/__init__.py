@@ -16,24 +16,18 @@ ic = IceCreamDebugger()
 ic.enabled = s.DEBUG
 
 
-# # This works, just commenting out for now. Put it back later.
 # Logger
-tz = pytz.timezone('Asia/Manila')
-filename = datetime.now(tz=tz).strftime(f'{s.APPCODE.upper()}:{s.ENV.lower()}-%Y-%m-%d')
+# tz = pytz.timezone('Asia/Manila')
+# filename = datetime.now(tz=tz).strftime(f'{s.APPCODE.upper()}:{s.ENV.lower()}-%Y-%m-%d')
 
-file_handler = logging.FileHandler(f'app/logs/{filename}.log')
+warning_handler = logging.FileHandler(f'app/logs/warning.log')
+warning_handler.setLevel(logging.WARNING)
 file_format = '[%(asctime)s] %(levelname)s %(funcName)s:%(lineno)d: %(message)s'
-file_handler.setFormatter(logging.Formatter(file_format))
-logger.addHandler(file_handler)
+warning_handler.setFormatter(logging.Formatter(file_format))
+logger.addHandler(warning_handler)
 
-# if s.DEBUG:
-#     stream_handler = logging.StreamHandler()
-#     stream_format = '%(levelname)s %(funcName)s:%(lineno)d: %(message)s'
-#     stream_handler.setFormatter(logging.Formatter(stream_format))
-#     stream_handler.setLevel(logging.INFO)
-#     logger.addHandler(stream_handler)
-
-
-
-
-
+critical_handler = logging.FileHandler(f'app/logs/critical.log')
+critical_handler.setLevel(logging.CRITICAL)
+file_format = '[%(asctime)s] %(levelname)s %(funcName)s:%(lineno)d: %(message)s'
+critical_handler.setFormatter(logging.Formatter(file_format))
+logger.addHandler(critical_handler)
