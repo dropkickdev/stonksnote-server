@@ -21,7 +21,7 @@ ic.enabled = s.DEBUG
 tz = pytz.timezone('Asia/Manila')
 filename = datetime.now(tz=tz).strftime(f'{s.APPCODE.upper()}:{s.ENV.lower()}-%Y-%m-%d')
 
-file_handler = logging.FileHandler(f'logs/{filename}.log')
+file_handler = logging.FileHandler(f'app/logs/{filename}.log')
 file_format = '[%(asctime)s] %(levelname)s %(funcName)s:%(lineno)d: %(message)s'
 file_handler.setFormatter(logging.Formatter(file_format))
 logger.addHandler(file_handler)
