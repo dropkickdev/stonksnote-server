@@ -5,6 +5,7 @@ from tortoise.fields import (
     ForeignKeyRelation as FKRel, ManyToManyRelation as M2MRel, ReverseRelation as RRel,
     ForeignKeyField as FKField, ManyToManyField as M2MField
 )
+from tortoise.queryset import Prefetch
 from limeutils import modstr, setup_pagination
 
 from app import ic
@@ -45,10 +46,35 @@ class Broker(DTMixin, SharedMixin, models.Model):
     def __str__(self):
         return modstr(self, 'name')
     
+    # TESTME: Untested
     @classmethod
     async def get_fees(cls, ):
         pass
 
+    # TESTME: Untested
+    @classmethod
+    async def get_brokers(cls, usermod: UserMod, as_dict=True) -> list:
+        """
+        Get the brokers of a user
+        :param usermod:     User who's brokers you want to get
+        :param as_dict:     Return objects or dict
+        :return:            list
+        """
+        if as_dict:
+            return await Broker.filter(userbrokers__user=usermod) \
+                .values('id', 'name', 'short', 'brokerno', 'rating', 'logo',
+                        is_primary='userbrokers__is_primary')
+        else:
+            broker_list = await Broker.filter(userbrokers__user=usermod).prefetch_related(
+                Prefetch('userbrokers', UserBrokers.all().only('id', 'broker_id', 'is_primary'),
+                         to_attr='ubs')
+            ).only('id', 'name', 'short', 'brokerno', 'rating', 'logo')
+            
+            if broker_list:
+                for idx, i in enumerate(broker_list):
+                    broker_list[idx].is_primary = i.ubs[0].is_primary                       # noqa
+            return broker_list
+        
 
 class UserBrokers(DTMixin, SharedMixin, models.Model):
     user: FKRel[UserMod] = FKField('models.UserMod', related_name='userbrokers')
@@ -166,79 +192,6 @@ class Trade(DTMixin, SharedMixin, models.Model):
     def __str__(self):
         return modstr(self, 'stash__equity')
     
-    # TODO: Update this since the Stash table was added
-    # TESTME: Untested
-    @classmethod
-    async def get_trades(cls, spec: TradeData, user: UserDB, start: Optional[datetime] = None,
-                         end: Optional[datetime] = None) -> List[dict]:
-        """
-        Get list of trades for a specified user
-        :param spec:    TradeData token from the route
-        :param user:    User to search for
-        :param start:   Starting date
-        :param end:     Ending date
-        :return:        list
-        """
-        try:
-            countquery = cls.filter(author_id=user.id)
-            tradequery = cls.filter(author_id=user.id)
-            
-            if spec.equity:
-                tradequery = tradequery.filter(equity__ticker__icontains=spec.equity)
-                countquery = countquery.filter(equity__ticker__icontains=spec.equity)
-            if start:
-                tradequery = tradequery.filter(created_at__gte=start)
-                countquery = countquery.filter(created_at__gte=start)
-            if end:
-                tradequery = tradequery.filter(created_at__lte=end)
-                countquery = countquery.filter(created_at__lte=end)
-                
-            count = await countquery.count()
-            orderby, offset, limit = setup_pagination(**spec.dict(), total=count)
-            tradequery = tradequery.order_by(orderby).limit(limit).offset(offset)
-            tradequery = tradequery.values(
-                'id', 'shares', 'action', 'price', 'created_at', 'author_id',
-                'currency', ticker='equity__ticker',
-            )
-            trades = await tradequery
-            
-            clean_trades = cls.trades_cleaner(trades)
-            return clean_trades
-        except Exception as e:
-            ic(e)
-
-    # TODO: Update this since the Stash table was added
-    # TESTME: Untested
-    @classmethod
-    def trades_cleaner(cls, trades: List[dict], buyfees: Optional[float] = None,
-                       sellfees: Optional[float] = None) -> List[dict]:
-        """
-        Cleans data to be used by the react front-end
-        :param trades:      Result of a DB query in dict format
-        :param buyfees:     If there any any fees to include from broker
-        :param sellfees:    If there any any fees to include from broker
-        :return:            list
-        """
-        ll = []
-        for i in trades:
-            del i['author_id']
-            i['minsell'] = 'n/a'
-            i['gainloss'] = 'n/a'
-            
-            i['total'] = i.get('shares') * i.get('price')
-            if buyfees:
-                i['total'] = i['total'] * buyfees
-            elif sellfees:
-                i['total'] = i['total'] * sellfees
-            
-            # TODO: Convert to user's local time via offset
-            created_at = i.get('created_at').strftime('%Y-%m-%d')
-            i['bought'] = created_at if i.get('action') == 'buy' else ''
-            i['sold'] = created_at if i.get('action') == 'sell' else ''
-            
-            ll.append(i)
-        return ll
-
 
 class Stash(DTMixin, SharedMixin, models.Model):
     equity: FKRel[Equity] = FKField('models.Equity', related_name='stash')

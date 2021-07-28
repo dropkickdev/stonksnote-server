@@ -10,6 +10,7 @@ from trades.models import Equity, Owner, Broker, UserBrokers
 from trades import get_foo
 from app.fixtures.datastore import taxo_global
 from app.tests.data import VERIFIED_EMAIL_DEMO
+from trades import Trader
 
 
 testrouter = APIRouter()
@@ -258,10 +259,12 @@ async def dev_tortoise(_: Response, user=Depends(current_user)):
     -------------------------------------------------------------------------------------------
     """
     
+    
+    
     # log.info('info here')
     # log.warning('warning here')
     # log.error('error here')
-
+ 
     return True
 
 
@@ -275,3 +278,13 @@ async def dev_tortoise(_: Response, user=Depends(current_user)):
 # async def check_username(inst: UniqueFieldsRegistration):
 #     exists = await UserMod.filter(email=inst.email).exists()
 #     return dict(exists=exists)
+
+
+
+
+@testrouter.get('/query')
+async def query_test(_: Response, user=Depends(current_user)):
+    usermod = await UserMod.get(pk=user.id)
+    
+    
+    return True
