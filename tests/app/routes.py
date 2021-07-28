@@ -1,15 +1,11 @@
 from typing import Optional
 from fastapi import Response, APIRouter, Depends, Cookie
-from tortoise.query_utils import Prefetch
-from tortoise.transactions import in_transaction
 
-from app import exceptions as x, ic, logger as log
-from app.auth import current_user, UserMod, Taxonomy, Permission
+from app import exceptions as x, logger as log
+from app.auth import current_user, UserMod
 from app.settings import settings as s
-from trades.models import Equity, Owner, Broker, UserBrokers
-from trades import get_foo
-from app.fixtures.datastore import taxo_global
-from app.tests.data import VERIFIED_EMAIL_DEMO
+from trades.models import Equity
+from tests.app.data import VERIFIED_EMAIL_DEMO
 from trades import Trader
 
 

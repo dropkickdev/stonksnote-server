@@ -1,10 +1,9 @@
-import pytest
 from ast import literal_eval
 
-from app import cache, red, ic
+from app import cache, red
 from app.settings import settings as s
 from app.auth import UserMod
-from app.tests.auth_test import VERIFIED_EMAIL_DEMO
+from tests.app.auth_test import VERIFIED_EMAIL_DEMO
 
 
 # @pytest.mark.focus

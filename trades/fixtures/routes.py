@@ -1,5 +1,4 @@
-import pytz, random
-from datetime import datetime, timedelta
+import random
 from fastapi import APIRouter
 from tortoise.exceptions import OperationalError
 from tortoise.transactions import in_transaction
@@ -8,11 +7,11 @@ from fastapi_users.user import get_create_user
 
 from app import ic
 from app.settings import settings as s
-from app.tests.data import VERIFIED_EMAIL_DEMO
+from tests.app.data import VERIFIED_EMAIL_DEMO
 from app.auth import Taxonomy as Taxo
 from trades import Trader
 from trades.fixtures import fixturedata as fx
-from trades.models import Broker, Owner, Equity, Mark, Trade
+from trades.models import Broker, Owner, Equity, Trade
 from app.auth import UserMod, UserCreate, userdb, UserDB, Group, finish_account_setup
 
 

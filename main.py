@@ -5,7 +5,7 @@ from tortoise.contrib.starlette import register_tortoise
 from app.settings.db import DATABASE
 from app.routes import authrouter, demorouter, grouprouter, permrouter, accountrouter
 from app.fixtures.routes import fixturerouter
-from app.tests.routes import testrouter
+from tests.app.routes import testrouter
 
 from trades.routes import traderoutes
 from trades.fixtures.routes import tradesdevrouter
@@ -15,7 +15,7 @@ def get_app() -> FastAPI:
     app = FastAPI()     # noqa
     
     # Routes
-    app.include_router(authrouter, prefix='/auth', tags=['Auth'])
+    app.include_router(authrouter, prefix='/app', tags=['Auth'])
     app.include_router(accountrouter, prefix='/account', tags=['Account'])
     app.include_router(grouprouter, prefix='/group', tags=['Group'])
     app.include_router(permrouter, prefix='/permission', tags=['Permission'])

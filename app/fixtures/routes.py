@@ -1,4 +1,3 @@
-import random
 from fastapi import APIRouter, FastAPI
 from fastapi_users.user import get_create_user
 from pydantic import EmailStr
@@ -9,7 +8,7 @@ from .datastore import options_dict, taxo_heads, taxo_global
 from app.settings import settings as s
 from app.auth import userdb, UserDB, UserCreate, UserMod, UserPermissions, Group, Permission, \
     Option, finish_account_setup, Taxonomy
-from app.tests.data import VERIFIED_EMAIL_DEMO, UNVERIFIED_EMAIL_DEMO
+from tests.app.data import VERIFIED_EMAIL_DEMO, UNVERIFIED_EMAIL_DEMO
 from app.fixtures.permissions import ContentGroup, AccountGroup, StaffGroup, AdminGroup, \
     NoaddGroup, permission_set, full, banning, group_set
 
@@ -168,7 +167,7 @@ async def create_users():
     # host = random.choice(['gmail', 'yahoo', 'amazon', 'yahoo', 'microsoft', 'google'])
     # tld = random.choice(['org', 'com', 'net', 'io', 'com.ph', 'co.uk'])
     # email = f'{random_word}@{host}.{tld}'
-    # from app.auth import userdb
+    # from app.app import userdb
     
     async with in_transaction():
         groups = await Group.filter(name__in=s.USER_GROUPS)

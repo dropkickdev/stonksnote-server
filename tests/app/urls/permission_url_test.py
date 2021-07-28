@@ -2,7 +2,7 @@ import pytest, json
 from collections import Counter
 
 from app.auth import Permission, UserMod
-from app.tests.data import VERIFIED_EMAIL_DEMO
+from tests.app.data import VERIFIED_EMAIL_DEMO
 from app.fixtures.routes import enchance_only_perms as eperms
 
 

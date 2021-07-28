@@ -2,7 +2,7 @@ import pytest
 
 from app import ic
 from app.auth import Group, UserMod
-from app.tests.auth_test import VERIFIED_EMAIL_DEMO
+from tests.app.auth_test import VERIFIED_EMAIL_DEMO
 
 
 
