@@ -285,6 +285,18 @@ async def dev_tortoise(_: Response, user=Depends(current_user)):
 @testrouter.get('/query')
 async def query_test(_: Response, user=Depends(current_user)):
     usermod = await UserMod.get(pk=user.id)
+    trader = Trader(usermod)
     
+    # broker = await Broker.get(pk=1).only('id')
+    # await trader.add_broker(broker, wallet=34, meta=dict(foo='bar', age=34))
+    #
+    # broker2 = await Broker.get(pk=2).only('id')
+    # await trader.add_broker(broker2, wallet=12, meta=dict(foo='this', age=96))
+    #
+    # broker3 = await Broker.get(pk=3).only('id')
+    # await trader.add_broker(broker3)
+    #
+    # x = await UserBrokers.filter(meta__isnull=False).all()
+    # ic(type(x), x)
     
     return True

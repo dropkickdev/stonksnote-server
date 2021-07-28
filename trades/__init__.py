@@ -111,14 +111,26 @@ class Trader:
     
     
     # TESTME: Untested: ready
-    async def add_broker(self, brokers: Union[Broker, List[Broker]]) -> None:
+    async def add_broker(self, broker: Union[Broker, List[Broker]], *, wallet: float = 0,
+                         is_primary: bool = False, meta: Optional[dict] = None) -> None:
         """
         Assign brokers to the user
-        :param brokers: Broker
-        :return:        None
+        :param broker:      Broker to add
+        :param wallet:      Starting wallet amount. Valid only if single Broker.
+        :param is_primary:  Is this the primary? Valid only if single Broker.
+        :param meta:        Meta data. Valid only if single Broker.
+        :return:            None
         """
-        brokers = listify(brokers)
-        await self.usermod.brokers.add(*brokers)
+        broker_list = listify(broker)
+        
+        if isinstance(broker, Broker):
+            if wallet or is_primary or meta:
+                if not await UserBrokers.exists(user=self.usermod, broker=broker):
+                    await UserBrokers.create(user=self.usermod, broker=broker, meta=meta,
+                                             is_primary=is_primary, wallet=wallet)
+                    return
+        
+        await self.usermod.brokers.add(*broker_list)
     
     
     # TESTME: Untested: ready

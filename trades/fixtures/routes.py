@@ -10,6 +10,7 @@ from app import ic
 from app.settings import settings as s
 from app.tests.data import VERIFIED_EMAIL_DEMO
 from app.auth import Taxonomy as Taxo
+from trades import Trader
 from trades.fixtures import fixturedata as fx
 from trades.models import Broker, Owner, Equity, Mark, Trade
 from app.auth import UserMod, UserCreate, userdb, UserDB, Group, finish_account_setup
@@ -71,9 +72,13 @@ async def init():
 async def trades_data():
     try:
         async with in_transaction():
-            usermod_list = await UserMod.filter(is_verified=True).only('id')
-            tickers = await Equity.all().only('id')
-            broker = await Broker.get(name='COL FINANCIAL GROUP, INC.').only('id')
+            usermod_list = await UserMod.filter(is_verified=True).only('id', 'currency')
+            equity_list = await Equity.all().only('id')
+            
+            brokers = []
+            brokers.append(await Broker.get(name='COL FINANCIAL GROUP, INC.').only('id'))
+            brokers.append(await Broker.get(name='UNITED PACIFIC SECURITIES').only('id'))
+            brokers.append(await Broker.get(name='CITICORP SECURITIES (RP)').only('id'))
             
             # # Marks
             # expires = datetime.now(tz=pytz.UTC) + timedelta(days=2)
@@ -83,22 +88,29 @@ async def trades_data():
             #         idx = random.randint(0, len(tickers) - 1)
             #         ll.append(Mark(expires=expires, equity=tickers[idx], author=usermod))
             #     await Mark.bulk_create(ll)
-            #
-            # # Trades
-            # for usermod in usermod_list:
-            #     ll = []
-            #     for _ in range(random.randint(1, 15)):
-            #         equity = tickers[random.randint(0, len(tickers) - 1)]
-            #         marketprice = random.randint(100, 999) / 100
-            #         shares = random.randint(100, 10_000)
-            #         gross = marketprice * shares
-            #         fees = gross * 0.00295
-            #         total = gross + fees
-            #
-            #         ll.append(Trade(user=usermod, equity=equity, broker=broker, action='buy',
-            #                         author=usermod, marketprice=marketprice, shares=shares,
-            #                         gross=gross, fees=fees, total=total))
-            #     await Trade.bulk_create(ll)
+
+            # Trades
+            for usermod in usermod_list:
+                ll = []
+                for _ in range(random.randint(1, 15)):
+                    equity = random.choice(equity_list)
+                    marketprice = random.randint(100, 999) / 100
+                    shares = random.randint(100, 10_000)
+                    gross = marketprice * shares
+                    fees = gross * 0.00295
+                    total = gross + fees
+                    wallet = random.randint(0, 1_000_000)
+
+                    # trader = Trader(usermod=usermod, brokers=brokers, primary=brokers[1],
+                    #                 wallet=wallet)
+                    trader = Trader(usermod)
+                    await trader.add_broker(brokers)
+                    await trader.set_primary(random.choice(brokers).id)
+
+                    # ll.append(Trade(equity=equity, broker=broker, action='buy',
+                    #                 author=usermod, marketprice=marketprice, shares=shares,
+                    #                 gross=gross, fees=fees, total=total))
+                await Trade.bulk_create(ll)
 
         return 'SUCCESS: Trades data'
     except Exception as e:
