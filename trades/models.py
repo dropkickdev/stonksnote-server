@@ -51,7 +51,6 @@ class Broker(DTMixin, SharedMixin, models.Model):
     @classmethod
     async def get_fees(cls, ):
         pass
-
         
 
 class UserBrokers(DTMixin, SharedMixin, models.Model):
@@ -70,6 +69,26 @@ class UserBrokers(DTMixin, SharedMixin, models.Model):
     
     def __str__(self):
         return modstr(self, 'broker')
+
+    # TESTME: Untested: ready
+    async def reset_wallet(self, amount: float = 0, save_now: bool = False):
+        self.wallet = amount
+        if save_now:
+            await self.save(update_fields=['wallet'])
+
+    # TESTME: Untested: ready
+    async def deposit(self, amount: float, save_now: bool = False):
+        self.wallet += amount
+        if save_now:
+            await self.save(update_fields=['wallet'])
+
+    # TESTME: Untested: ready
+    async def withdraw(self, amount: float, save_now: bool = False):
+        self.wallet = self.wallet - amount
+        if save_now:
+            self.wallet = 0 if self.wallet < 0 else self.wallet
+        await self.save(update_fields=['wallet'])
+
 
 
 class Owner(DTMixin, SharedMixin, models.Model):

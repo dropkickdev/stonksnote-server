@@ -144,8 +144,6 @@ class Trader:
         await self.usermod.brokers.remove(*brokers)
         
     
-        
-    
     # # TODO: Update this since the Stash table was added
     # # TESTME: Untested
     # async def get_trades(self, spec: TradeData, start: Optional[datetime] = None,
