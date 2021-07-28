@@ -29,6 +29,7 @@ class Broker(DTMixin, SharedMixin, models.Model):
     logo = fl.CharField(max_length=255, default='')
     buyfees = fl.DecimalField(max_digits=6, decimal_places=4, default=0)
     sellfees = fl.DecimalField(max_digits=6, decimal_places=4, default=0)
+    currency = fl.CharField(max_length=5, default=s.CURRENCY)
     
     is_online = fl.BooleanField(default=True)
     is_active = fl.BooleanField(default=True)
@@ -51,29 +52,6 @@ class Broker(DTMixin, SharedMixin, models.Model):
     async def get_fees(cls, ):
         pass
 
-    # TESTME: Untested
-    @classmethod
-    async def get_brokers(cls, usermod: UserMod, as_dict=True) -> list:
-        """
-        Get the brokers of a user
-        :param usermod:     User who's brokers you want to get
-        :param as_dict:     Return objects or dict
-        :return:            list
-        """
-        if as_dict:
-            return await Broker.filter(userbrokers__user=usermod) \
-                .values('id', 'name', 'short', 'brokerno', 'rating', 'logo',
-                        is_primary='userbrokers__is_primary')
-        else:
-            broker_list = await Broker.filter(userbrokers__user=usermod).prefetch_related(
-                Prefetch('userbrokers', UserBrokers.all().only('id', 'broker_id', 'is_primary'),
-                         to_attr='ubs')
-            ).only('id', 'name', 'short', 'brokerno', 'rating', 'logo')
-            
-            if broker_list:
-                for idx, i in enumerate(broker_list):
-                    broker_list[idx].is_primary = i.ubs[0].is_primary                       # noqa
-            return broker_list
         
 
 class UserBrokers(DTMixin, SharedMixin, models.Model):
