@@ -196,7 +196,7 @@ class Stash(DTMixin, SharedMixin, models.Model):
     equity: FKRel[Equity] = FKField('models.Equity', related_name='stash')
     shares = fl.IntField(default=0)
 
-    is_resolved = fl.BooleanField(default=False, index=True)
+    is_resolved = fl.BooleanField(default=True, index=True)
     meta = fl.JSONField(null=True)
     author: FKRel['UserMod'] = FKField('models.UserMod', related_name='author_stash')
     
