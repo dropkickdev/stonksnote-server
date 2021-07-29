@@ -1,11 +1,13 @@
 from datetime import datetime
 from typing import Optional, List
+from decimal import Decimal
 from tortoise import models, fields as fl
 from tortoise.fields import (
     ForeignKeyRelation as FKRel, ManyToManyRelation as M2MRel, ReverseRelation as RRel,
     ForeignKeyField as FKField, ManyToManyField as M2MField
 )
 from tortoise.queryset import Prefetch
+from tortoise.transactions import in_transaction
 from limeutils import modstr, setup_pagination
 
 from app import ic
@@ -51,6 +53,7 @@ class Broker(DTMixin, SharedMixin, models.Model):
     @classmethod
     async def get_fees(cls, ):
         pass
+    
         
 
 class UserBrokers(DTMixin, SharedMixin, models.Model):
@@ -73,20 +76,18 @@ class UserBrokers(DTMixin, SharedMixin, models.Model):
     # TESTME: Untested: ready
     async def reset_wallet(self, amount: float = 0, save_now: bool = False):
         self.wallet = amount
-        if save_now:
-            await self.save(update_fields=['wallet'])
+        await self.save(update_fields=['wallet'])
 
     # TESTME: Untested: ready
-    async def deposit(self, amount: float, save_now: bool = False):
-        self.wallet += amount
-        if save_now:
-            await self.save(update_fields=['wallet'])
+    async def incr_wallet(self, gross: float):
+        self.wallet += gross
+        await self.save(update_fields=['wallet'])
 
     # TESTME: Untested: ready
-    async def withdraw(self, amount: float, save_now: bool = False):
-        self.wallet = self.wallet - amount
-        if save_now:
-            self.wallet = 0 if self.wallet < 0 else self.wallet
+    async def decr_wallet(self, gross: float):
+        # TODO: Doesn't check if you have enough funds
+        self.wallet -= gross
+        # self.wallet = 0 if self.wallet < 0 else self.wallet
         await self.save(update_fields=['wallet'])
 
 
@@ -172,7 +173,7 @@ class Trade(DTMixin, SharedMixin, models.Model):
     basetrade: FKRel['Trade'] = FKField('models.Trade', related_name='basetrade_trades', null=True)
     note: FKRel['Note'] = FKField('models.Note', related_name='note_trades', null=True)
     
-    is_resolved = fl.BooleanField(default=False, index=True)
+    is_resolved = fl.BooleanField(default=True, index=True)
     meta = fl.JSONField(null=True)
     author: FKRel['UserMod'] = FKField('models.UserMod', related_name='author_trades')
 
@@ -207,6 +208,17 @@ class Stash(DTMixin, SharedMixin, models.Model):
 
     def __str__(self):
         return modstr(self, 'equity')
+
+    # TESTME: Untested
+    async def incr_stash(self, shares: int):
+        self.shares += shares
+        await self.save(update_fields=['shares'])
+        
+
+    # TESTME: Untested
+    async def decr_stash(self, shares: int):
+        self.shares -= shares
+        await self.save(update_fields=['shares'])
 
 
 class Mark(DTMixin, SharedMixin, models.Model):

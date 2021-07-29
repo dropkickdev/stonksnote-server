@@ -89,27 +89,18 @@ async def trades_data():
             #     await Mark.bulk_create(ll)
 
             # Trades
+            usermod_list = [usermod_list[0]]
             for usermod in usermod_list:
-                ll = []
-                for _ in range(random.randint(1, 15)):
+                trader = Trader(usermod)
+                await trader.add_broker(brokers)
+                await trader.set_primary(random.choice(brokers).id)
+                
+                for _ in range(1):
                     equity = random.choice(equity_list)
-                    marketprice = random.randint(100, 999) / 100
+                    price = random.randint(100, 999) / 100
                     shares = random.randint(100, 10_000)
-                    gross = marketprice * shares
-                    fees = gross * 0.00295
-                    total = gross + fees
-                    wallet = random.randint(0, 1_000_000)
 
-                    # trader = Trader(usermod=usermod, brokers=brokers, primary=brokers[1],
-                    #                 wallet=wallet)
-                    trader = Trader(usermod)
-                    await trader.add_broker(brokers)
-                    await trader.set_primary(random.choice(brokers).id)
-
-                    # ll.append(Trade(equity=equity, broker=broker, action='buy',
-                    #                 author=usermod, marketprice=marketprice, shares=shares,
-                    #                 gross=gross, fees=fees, total=total))
-                await Trade.bulk_create(ll)
+                    await trader.buy_stock(equity, shares, price)
 
         return 'SUCCESS: Trades data'
     except Exception as e:

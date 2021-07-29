@@ -1,10 +1,11 @@
 from typing import Optional
 from fastapi import Response, APIRouter, Depends, Cookie
+from tortoise.query_utils import Prefetch
 
 from app import ic, exceptions as x, logger as log
 from app.auth import current_user, UserMod
 from app.settings import settings as s
-from trades.models import Equity
+from trades.models import Equity, Owner
 from tests.app.data import VERIFIED_EMAIL_DEMO
 from trades import Trader
 
@@ -45,7 +46,8 @@ async def dev_tortoise(_: Response, user=Depends(current_user)):
     - owner__author__display and name contain field data not an object
     TOTAL QUERIES: 1
     """
-    # torun = query.values('id', 'ticker', 'owner__author__display', name='owner__name')  # partial fields
+    # torun = query.values('id', 'ticker', 'owner__author__display', owner='owner__name')  # partial
+    # # fields
     # pat1 = await torun
     # ic(type(pat1), pat1)
     
@@ -105,7 +107,8 @@ async def dev_tortoise(_: Response, user=Depends(current_user)):
     """
     # query = query.only('id', 'owner_id')    # 1q, partial fields
     # torun = query.prefetch_related(
-    #     Prefetch('owner', Owner.all().only('id', 'name')),       # +1q, partial fields
+    #     Prefetch('owner', Owner.all().only('id', 'name'), to_attr='owner'),       # +1q,
+    #     # partial fields
     #     # Prefetch('field1', SomeModel.all()),      # +1q, all fields
     #     # Prefetch('field2', SomeTable.filter(foo=True).all()), # +1q, all fields, list
     #     # 'field3'   # +1q, all fields, might be list
