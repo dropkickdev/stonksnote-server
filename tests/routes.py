@@ -1,7 +1,7 @@
 from typing import Optional
 from fastapi import Response, APIRouter, Depends, Cookie
 
-from app import exceptions as x, logger as log
+from app import ic, exceptions as x, logger as log
 from app.auth import current_user, UserMod
 from app.settings import settings as s
 from trades.models import Equity
@@ -279,8 +279,10 @@ async def dev_tortoise(_: Response, user=Depends(current_user)):
 
 
 @testrouter.get('/query')
-async def query_test(_: Response, user=Depends(current_user)):
-    usermod = await UserMod.get(pk=user.id)
+async def query_test(_: Response,):
+    # usermod = await UserMod.get(pk=user.id)
+    usermod_list = await UserMod.all()
+    usermod = usermod_list[3]
     trader = Trader(usermod)
     
     # broker = await Broker.get(pk=1).only('id')
@@ -293,6 +295,15 @@ async def query_test(_: Response, user=Depends(current_user)):
     # await trader.add_broker(broker3)
     #
     # x = await UserBrokers.filter(meta__isnull=False).all()
+    # ic(type(x), x)
+
+    # x = await trader.has_brokers()
+    # ic(type(x), x)
+    # x = await trader.has_primary()
+    # ic(type(x), x)
+    # x = await trader.get_primary(True)
+    # ic(type(x), x)
+    # x = await trader.get_brokers(True)
     # ic(type(x), x)
     
     return True

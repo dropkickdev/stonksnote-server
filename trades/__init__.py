@@ -18,9 +18,6 @@ class Trader:
     broker: Broker
     broker_list: list
     
-    # unsaved_brokers: bool = False
-    # unsaved = False
-    
     def __init__(self, usermod: UserMod):
         self.usermod = usermod
         self.currency = self.usermod.currency
@@ -35,25 +32,39 @@ class Trader:
         #                           wallet=wallet))
         # UserBrokers.bulk_create(ll)
 
+    async def has_primary(self):
+        return await UserBrokers.exists(user=self.usermod, is_primary=True)
+
+    async def has_brokers(self):
+        return await UserBrokers.exists(user=self.usermod)
+
     # TESTME: Untested ready
-    async def get_broker(self, as_instance: bool = False):
+    async def get_primary(self, as_instance: bool = False):
+        if not await self.has_primary():
+            return
+        
         fields = ['id', 'name', 'short', 'brokerno', 'rating', 'logo', 'currency']
         query = Broker.get_or_none(userbrokers__user=self.usermod, userbrokers__is_primary=True)
         
         if not as_instance:
             query = query.values(*fields, is_primary='userbrokers__is_primary',
                                  wallet='userbrokers__wallet')
-            return (await query)[0]
+            # Returns a list even if you're using get() since userbrokers is M2M
+            broker = await query
+            return broker
 
         query = query.prefetch_related(
             Prefetch('userbrokers', UserBrokers.all()\
                      .only('id', 'broker_id', 'is_primary', 'wallet'), to_attr='ubs')
         )
+        broker = await query.only(*fields)
         
-        if broker := await query.only(*fields):
-            broker.is_primary = broker.ubs[0].is_primary
-            broker.wallet = broker.ubs[0].wallet
-            return broker
+        # Cleanup
+        if broker:
+            broker.is_primary = broker.ubs and broker.ubs[0].is_primary or None
+            broker.wallet = broker.ubs and broker.ubs[0].wallet or None
+            
+        return broker
                 
 
     # TESTME: Untested: ready
@@ -64,6 +75,9 @@ class Trader:
         :return:            list
         """
         fields = ['id', 'name', 'short', 'brokerno', 'rating', 'logo', 'currency']
+        
+        if not await self.has_brokers():
+            return []
         
         if not as_instance:
             return await Broker.filter(userbrokers__user=self.usermod) \
