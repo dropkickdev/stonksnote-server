@@ -209,13 +209,13 @@ class Stash(DTMixin, SharedMixin, models.Model):
     def __str__(self):
         return modstr(self, 'equity')
 
-    # TESTME: Untested
+    # TESTME: Untested ready
     async def incr_stash(self, shares: int):
         self.shares += shares
         await self.save(update_fields=['shares'])
         
 
-    # TESTME: Untested
+    # TESTME: Untested ready
     async def decr_stash(self, shares: int):
         self.shares -= shares
         await self.save(update_fields=['shares'])

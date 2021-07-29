@@ -1,4 +1,5 @@
-import random
+import random, pytz
+from datetime import datetime, timedelta
 from fastapi import APIRouter
 from tortoise.exceptions import OperationalError
 from tortoise.transactions import in_transaction
@@ -11,7 +12,7 @@ from tests.app.data import VERIFIED_EMAIL_DEMO
 from app.auth import Taxonomy as Taxo
 from trades import Trader
 from trades.fixtures import fixturedata as fx
-from trades.models import Broker, Owner, Equity, Trade
+from trades.models import Broker, Owner, Equity, Trade, Mark
 from app.auth import UserMod, UserCreate, userdb, UserDB, Group, finish_account_setup
 
 
@@ -84,23 +85,26 @@ async def trades_data():
             # for usermod in usermod_list:
             #     ll = []
             #     for _ in range(random.randint(1, 10)):
-            #         idx = random.randint(0, len(tickers) - 1)
-            #         ll.append(Mark(expires=expires, equity=tickers[idx], author=usermod))
+            #         equity = random.choice(equity_list)
+            #         ll.append(Mark(expires=expires, equity=equity, author=usermod))
             #     await Mark.bulk_create(ll)
 
             # Trades
-            usermod_list = [usermod_list[0]]
+            # usermod_list = [usermod_list[0]]
             for usermod in usermod_list:
                 trader = Trader(usermod)
                 await trader.add_broker(brokers)
                 await trader.set_primary(random.choice(brokers).id)
-                
-                for _ in range(1):
+
+                for _ in range(1, 40):
                     equity = random.choice(equity_list)
                     price = random.randint(100, 999) / 100
                     shares = random.randint(100, 10_000)
-
-                    await trader.buy_stock(equity, shares, price)
+                    
+                    if random.choice([0, 1]):
+                        await trader.buy_stock(equity, shares, price)
+                    else:
+                        await trader.sell_stock(equity, shares, price)
 
         return 'SUCCESS: Trades data'
     except Exception as e:

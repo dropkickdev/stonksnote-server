@@ -1,8 +1,9 @@
 from decimal import Decimal
 from typing import Optional, Tuple, Union, List
 from tortoise.query_utils import Prefetch, Q
+from tortoise.queryset import QuerySet, QuerySetSingle
 from tortoise.transactions import in_transaction
-from pydantic import UUID4, BaseModel
+from pydantic import UUID4, BaseModel, validate_arguments
 from limeutils import listify
 
 from .models import *
@@ -39,13 +40,27 @@ class Trader:
         return await UserBrokers.exists(user=self.usermod)
 
     # TESTME: Untested ready
-    async def get_primary(self, as_instance: bool = False):
+    async def get_primary(self, *, as_instance: bool = False):
         if not await self.has_primary():
             return
         
+        query = Broker.get_or_none(userbrokers__user=self.usermod, userbrokers__is_primary=True)
+        return await self._query_userbroker(query, as_instance)
+
+    # TESTME: Untested ready
+    async def get_broker(self, id: int, *, as_instance: bool = False):
+        if not await self.has_brokers():
+            return
+        
+        query = Broker.get_or_none(userbrokers__user=self.usermod, userbrokers__broker_id=id)
+        return await self._query_userbroker(query, as_instance)
+
+
+    # TESTME: Untested ready
+    @staticmethod
+    async def _query_userbroker(query: QuerySetSingle, as_instance: bool):
         fields = ['id', 'name', 'short', 'brokerno', 'rating', 'logo', 'currency', 'buyfees',
                   'sellfees']
-        query = Broker.get_or_none(userbrokers__user=self.usermod, userbrokers__is_primary=True)
         
         if not as_instance:
             query = query.values(*fields, is_primary='userbrokers__is_primary',
@@ -53,20 +68,24 @@ class Trader:
             # Returns a list even if you're using get() since userbrokers is M2M
             broker = await query
             return broker
-
+    
         query = query.prefetch_related(
-            Prefetch('userbrokers', UserBrokers.all()\
+            Prefetch('userbrokers', UserBrokers.all() \
                      .only('id', 'broker_id', 'is_primary', 'wallet'), to_attr='ubs')
         )
         broker = await query.only(*fields)
-        
+    
         # Cleanup
         if broker:
             broker.is_primary = broker.ubs and broker.ubs[0].is_primary or None
             broker.wallet = broker.ubs and broker.ubs[0].wallet or None
-            
+            broker.ubs = broker.ubs and broker.ubs[0] or None
+            broker.buyfees = float(broker.buyfees)
+            broker.sellfees = float(broker.sellfees)
+            broker.ubs.wallet = float(broker.ubs.wallet)
+    
         return broker
-                
+        
 
     # TESTME: Untested: ready
     async def get_brokers(self, as_instance: bool = False) -> list:
@@ -159,45 +178,89 @@ class Trader:
         await self.usermod.brokers.remove(*brokers)
     
     
-    # TESTME: Untested
+    # TESTME: Untested ready
     async def has_stash(self, equity: Equity):
         return await Stash.exists(user=self.usermod, equity=equity)
     
-    # TESTME: Untested
-    async def get_stash(self, equity: Equity):
-        pass
     
-    # TESTME: Untested
-    async def incr_stash(self, equity: Equity, shares: int):
-        pass
-
-    # TESTME: Untested
-    async def decr_stash(self, equity: Equity, shares: int):
-        pass
+    # TESTME: Untested: ready
+    async def get_stash(self, equity: Equity, *, as_instance: bool = False):
+        fields = ('id', 'shares', 'is_resolved', 'updated_at')
+        query = Stash.get_or_none(user=self.usermod, equity=equity)
+        if as_instance:
+            return await query.prefetch_related(
+                Prefetch('equity', Equity.all().only('id', 'ticker', 'category', 'status'),
+                         to_attr='equity')
+            ).only(*fields, 'equity_id')
+        return (await query.values(*fields, equity='equity__ticker', equity_id='equity__id',
+                                  category='equity__category', status='equity__status'))[0]
     
+    
+    # TESTME: Untested ready
     async def buy_stock(self, equity: Equity, shares: int, price: float,
-                        broker: Optional[Broker] = None):
+                        broker: Optional[Broker] = None, currency: Optional[str] = None):
         if not broker:
             if await self.has_primary():
-                broker = await self.get_primary()
+                broker = await self.get_primary(as_instance=True)
             else:
                 if await self.has_brokers():
-                    broker = await UserBrokers.get(user=self.usermod).only('id', 'buyfees', 'currency')
+                    ub = await UserBrokers.filter(user=self.usermod).first().values('id')
+                    broker = await self.get_broker(ub['id'], as_instance=True)
                     await self.set_primary(broker.id)
                 else:
                     raise x.MissingBrokersError()
 
+        # ic(vars(broker))
         gross = price * shares
         fees = gross * broker.buyfees
         total = gross + fees
-        currency = broker.currency
-        return gross, fees, total, currency
-        
+        currency = currency or broker.currency
 
+        async with in_transaction():
+            stash = await self.get_stash(equity, as_instance=True)
+            if not stash:
+                stash = await Stash.create(user=self.usermod, equity=equity, author=self.usermod)
+            
+            await stash.incr_stash(shares)
+            await broker.ubs.decr_wallet(total)
+            await Trade.create(stash=stash, broker=broker, action=1, author=self.usermod,
+                               price=price, shares=shares, gross=gross, fees=fees, total=total,
+                               currency=currency)
+            return gross, fees, total, currency
 
+    # TESTME: Untested
     async def sell_stock(self, equity: Equity, shares: int, price: float,
-                         broker: Optional[Broker] = None):
-        pass
+                        broker: Optional[Broker] = None, currency: Optional[str] = None):
+        if not broker:
+            if await self.has_primary():
+                broker = await self.get_primary(as_instance=True)
+            else:
+                if await self.has_brokers():
+                    ub = await UserBrokers.filter(user=self.usermod).first().values('id')
+                    broker = await self.get_broker(ub['id'], as_instance=True)
+                    await self.set_primary(broker.id)
+                else:
+                    raise x.MissingBrokersError()
+
+        # ic(vars(broker))
+        gross = price * shares
+        fees = gross * broker.sellfees
+        total = gross - fees
+        currency = currency or broker.currency
+
+        async with in_transaction():
+            stash = await self.get_stash(equity, as_instance=True)
+            if not stash:
+                stash = await Stash.create(user=self.usermod, equity=equity, author=self.usermod)
+            # ic(type(stash), vars(stash))
+            
+            await stash.decr_stash(shares)
+            await broker.ubs.incr_wallet(total)
+            await Trade.create(stash=stash, broker=broker, action=2, author=self.usermod,
+                               price=price, shares=shares, gross=gross, fees=fees, total=total,
+                               currency=currency)
+            return gross, fees, total, currency
+    
     
     # # TODO: Update this since the Stash table was added
     # # TESTME: Untested
@@ -274,55 +337,6 @@ class Trader:
     #     # Gather the brokers
     #     userbrokers = await self.usermod.brokers.all()
 
-
-    async def xbuy_stock(self, equity_id: int, shares: int, price: float,
-                        broker: Optional[Broker] = None):
-        
-        x = self.usermod
-        ic(vars(x))
-        
-        # y = await x.brokers.all()
-        # ic(y, vars(y[0]))
-        # z = await x.userbrokers.all()
-        # ic(z, vars(z[0]))
-        
-        # # Getting data from Broker and UserBrokers in one query
-        # foo = await UserMod.filter(userbrokers__user=x).values(prime='userbrokers__is_primary',
-        #                                                        broker='brokers__name')
-        # ic(foo)
-        
-        
-        
-        
-        
-        # a = await x.brokers.userbrokers.all()
-        # ic(a)
-        
-        
-        # for i, idx in enumerate(y):
-        #     ic(idx, i)
-        # ic(vars(y[1]))
-        
-        return 1, 2, 3
-        # # Check Stash
-        # if broker := broker or await self.get_broker():
-        #     if equity := await Equity.get_or_none(pk=equity_id).only('id'):
-        #         stash, _ = await Stash.get_or_create(author=self.usermod, equity=equity)
-        #
-        #         gross = price * shares
-        #         fees = gross * broker.buyfees
-        #         total = gross + fees
-        #         currency = self.currency
-        #         # return gross, fees, total
-        #
-        #         async with in_transaction():
-        #             stash.shares += shares
-        #             await stash.save(update_fields=['shares'])
-        #             trade = await Trade.create(stash=stash, equity=equity, broker=self.broker,
-        #                                        action=1, price=price, shares=shares, gross=gross,
-        #                                        fees=fees, total=total, currency=currency)
-        #             return gross, fees, total
-        
     
     async def get_ticketx(self, ticket: str):
         return
