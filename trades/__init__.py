@@ -6,7 +6,7 @@ from pydantic import UUID4, BaseModel
 from limeutils import listify
 
 from .models import *
-# from .resource import CreateBrokerPy
+from app import ic, exceptions as x
 from app.settings import settings as s
 from app.auth import UserMod
 
@@ -43,7 +43,8 @@ class Trader:
         if not await self.has_primary():
             return
         
-        fields = ['id', 'name', 'short', 'brokerno', 'rating', 'logo', 'currency']
+        fields = ['id', 'name', 'short', 'brokerno', 'rating', 'logo', 'currency', 'buyfees',
+                  'sellfees']
         query = Broker.get_or_none(userbrokers__user=self.usermod, userbrokers__is_primary=True)
         
         if not as_instance:
@@ -156,7 +157,47 @@ class Trader:
         """
         brokers = listify(brokers)
         await self.usermod.brokers.remove(*brokers)
+    
+    
+    # TESTME: Untested
+    async def has_stash(self, equity: Equity):
+        return await Stash.exists(user=self.usermod, equity=equity)
+    
+    # TESTME: Untested
+    async def get_stash(self, equity: Equity):
+        pass
+    
+    # TESTME: Untested
+    async def incr_stash(self, equity: Equity, shares: int):
+        pass
+
+    # TESTME: Untested
+    async def decr_stash(self, equity: Equity, shares: int):
+        pass
+    
+    async def buy_stock(self, equity: Equity, shares: int, price: float,
+                        broker: Optional[Broker] = None):
+        if not broker:
+            if await self.has_primary():
+                broker = await self.get_primary()
+            else:
+                if await self.has_brokers():
+                    broker = await UserBrokers.get(user=self.usermod).only('id', 'buyfees', 'currency')
+                    await self.set_primary(broker.id)
+                else:
+                    raise x.MissingBrokersError()
+
+        gross = price * shares
+        fees = gross * broker.buyfees
+        total = gross + fees
+        currency = broker.currency
+        return gross, fees, total, currency
         
+
+
+    async def sell_stock(self, equity: Equity, shares: int, price: float,
+                         broker: Optional[Broker] = None):
+        pass
     
     # # TODO: Update this since the Stash table was added
     # # TESTME: Untested
@@ -234,7 +275,7 @@ class Trader:
     #     userbrokers = await self.usermod.brokers.all()
 
 
-    async def buy_stock(self, equity_id: int, shares: int, price: float,
+    async def xbuy_stock(self, equity_id: int, shares: int, price: float,
                         broker: Optional[Broker] = None):
         
         x = self.usermod
@@ -282,12 +323,8 @@ class Trader:
         #                                        fees=fees, total=total, currency=currency)
         #             return gross, fees, total
         
-        
-
-    async def sell_stock(self, equity: Equity, shares: int, price: float):
-        pass
     
-    async def get_ticket(self, ticket: str):
+    async def get_ticketx(self, ticket: str):
         return
     
 

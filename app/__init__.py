@@ -5,6 +5,7 @@ from fastapi.logger import logger
 from .exceptions import *
 from .settings import *
 from .cache import *
+from .app import *
 
 from icecream.icecream import IceCreamDebugger
 from app.settings import settings as s

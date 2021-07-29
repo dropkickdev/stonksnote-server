@@ -69,6 +69,7 @@ class UserMod(DTMixin, TortoiseBaseUserModel):
     userbrokers: RRel['UserBrokers']
     userpermissions: RRel['UserPermissions']
     oauth_accounts: RRel['OAuthAccount']
+    user_stash: RRel['Stash']
 
     full = Manager()
 

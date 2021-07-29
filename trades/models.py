@@ -191,6 +191,7 @@ class Trade(DTMixin, SharedMixin, models.Model):
     
 
 class Stash(DTMixin, SharedMixin, models.Model):
+    user: FKRel['UserMod'] = FKField('models.UserMod', related_name='user_stash')
     equity: FKRel[Equity] = FKField('models.Equity', related_name='stash')
     shares = fl.IntField(default=0)
 
