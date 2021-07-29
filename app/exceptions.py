@@ -64,3 +64,8 @@ class ServiceError(BaseAppError):
 class AppError(BaseAppError):
     """All other errors"""
     message = 'UNABLE TO ACCESS APPLICATION AT THIS TIME'
+
+
+class MissingBrokersError(BaseAppError):
+    """All other errors"""
+    message = 'YOU HAVE NO BROKERS IN YOUR ACCOUNT'
