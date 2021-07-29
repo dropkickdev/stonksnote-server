@@ -20,31 +20,8 @@ from app.auth import UserMod, UserCreate, userdb, UserDB, Group, finish_account_
 tradesdevrouter = APIRouter()
 
 
-@tradesdevrouter.get('/users', summary='Add more users for dev use only')
-async def addusers():
-    try:
-        async with in_transaction():
-            groups = await Group.filter(name__in=s.USER_GROUPS)
-            
-            # User n
-            for num in range(1, 4):
-                userdata = UserCreate(email=EmailStr(f'devuser-{num}@gmail.com'),
-                                      password='pass123')
-                create_user = get_create_user(userdb, UserDB)
-                created_user = await create_user(userdata, safe=True)
-                user = await UserMod.get(pk=created_user.id)
-                user.is_verified = True
-                await user.save()
-                await user.groups.add(*groups)
-                await finish_account_setup(user)
-                
-        return 'SUCCESS: Dev users'
-    except Exception as e:
-        ic(e)
-
-
 @tradesdevrouter.get('/trades_init', summary='Trades data: Brokers, Owners, and Equity')
-async def init():
+async def trades_init():
     try:
         async with in_transaction():
             usermod = await UserMod.get(email=VERIFIED_EMAIL_DEMO).only('id')
@@ -96,7 +73,7 @@ async def trades_data():
                 await trader.add_broker(brokers)
                 await trader.set_primary(random.choice(brokers).id)
 
-                for _ in range(1, 120):
+                for _ in range(1, 50):
                     equity = random.choice(equity_list)
                     price = random.randint(100, 999) / 100
                     shares = random.randint(100, 10_000)

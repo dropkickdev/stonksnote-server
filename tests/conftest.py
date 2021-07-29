@@ -6,11 +6,13 @@ from fastapi_users.router.verify import VERIFY_USER_TOKEN_AUDIENCE
 
 from app import ic
 from main import get_app
-from app.fixtures.routes import init, create_users, create_options
+from app.fixtures.routes import (
+    init, create_options, create_users, create_taxo
+)
 from app.auth import jwtauth, UserDB
 from app.settings import settings as s
 from app.settings.db import DATABASE_MODELS, DATABASE_URL
-
+from trades.fixtures.routes import trades_init, trades_data
 
 
 
@@ -39,12 +41,6 @@ def random_email(random_word):
 @pytest.fixture
 def passwd():
     return 'pass123'
-
-# @pytest.fixture
-# def headers():
-#     return {
-#         'Authorization': f'Bearer {ACCESS_TOKEN_DEMO}'
-#     }
 
 @pytest.fixture
 def auth_headers_tempdb(tempdb, loop):
@@ -77,10 +73,17 @@ async def db():
 @pytest.fixture
 def fixtures():
     async def ab():
-        await init()
-        user = await create_users()
-        await create_options()
+        await init(),
+        await create_options(),
+        user = await create_users(),
+        await create_taxo(),
         return user
+    yield ab
+    
+@pytest.fixture
+def trades_fix():
+    async def ab():
+        await trades_init()
     yield ab
 
 @pytest.fixture

@@ -7,6 +7,8 @@ from pydantic import UUID4, BaseModel, validate_arguments
 from limeutils import listify
 
 from .models import *
+from .choices import *
+from .resource import *
 from app import ic, exceptions as x
 from app.settings import settings as s
 from app.auth import UserMod
@@ -56,7 +58,6 @@ class Trader:
         return await self._query_userbroker(query, as_instance)
 
 
-    # TESTME: Untested ready
     @staticmethod
     async def _query_userbroker(query: QuerySetSingle, as_instance: bool):
         fields = ['id', 'name', 'short', 'brokerno', 'rating', 'logo', 'currency', 'buyfees',
@@ -87,7 +88,6 @@ class Trader:
         return broker
         
 
-    # TESTME: Untested: ready
     async def get_brokers(self, as_instance: bool = False) -> list:
         """
         Get the brokers of a user
@@ -105,13 +105,15 @@ class Trader:
 
         broker_list = await Broker.filter(userbrokers__user=self.usermod).prefetch_related(
             Prefetch('userbrokers', UserBrokers.all()\
-                     .only('id', 'broker_id', 'is_primary', 'wallet'), to_attr='ubs')
+                     .only('id', 'broker_id', 'is_primary', 'wallet', 'user_id'),
+                     to_attr='ubs_record')
         ).only(*fields)
 
-        if broker_list:
-            for idx, i in enumerate(broker_list):
-                broker_list[idx].is_primary = i.ubs[0].is_primary  # noqa
-                broker_list[idx].wallet = i.ubs[0].wallet  # noqa
+        # Cleanup
+        for idx, i in enumerate(broker_list):
+            broker_list[idx].is_primary = i.ubs_record[0].is_primary                        # noqa
+            broker_list[idx].wallet = float(i.ubs_record[0].wallet)                         # noqa
+            broker_list[idx].ubs_record = i.ubs_record[0]                                   # noqa
         return broker_list
 
     
@@ -144,7 +146,6 @@ class Trader:
             await ub.save(update_fields=['is_primary'])
     
     
-    # TESTME: Untested: ready
     async def add_broker(self, broker: Union[Broker, List[Broker]], *, wallet: float = 0,
                          is_primary: bool = False, meta: Optional[dict] = None) -> None:
         """
@@ -167,15 +168,16 @@ class Trader:
         await self.usermod.brokers.add(*broker_list)
     
     
-    # TESTME: Untested: ready
-    async def remove_broker(self, brokers: Union[Broker, List[Broker]]) -> None:
+    async def remove_broker(self, broker: Union[Broker, List[Broker]]) -> None:
         """
         Unassign a Broker from the UserMod
-        :param brokers:     Broker
+        :param broker:     Broker
         :return:            None
         """
-        brokers = listify(brokers)
-        await self.usermod.brokers.remove(*brokers)
+        if not broker:
+            return
+        broker = listify(broker)
+        await self.usermod.brokers.remove(*broker)
     
     
     # TESTME: Untested ready

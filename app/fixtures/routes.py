@@ -1,3 +1,4 @@
+import random
 from fastapi import APIRouter, FastAPI
 from fastapi_users.user import get_create_user
 from pydantic import EmailStr
@@ -28,7 +29,7 @@ enchance_only_perms = ['foo.delete', 'foo.hard_delete']
 
 
 @fixturerouter.get('/all', summary='Runs everything in the correct order')
-async def runall():
+async def init_auth():
     try:
         async with in_transaction():
             ll = [
@@ -199,6 +200,20 @@ async def create_users():
         user = await UserMod.get(pk=created_user.id)
         await user.groups.add(*groups)
         await finish_account_setup(user)
+
+        # Dev users
+        for num in range(1, 4):
+            host = random.choice(['gmail', 'yahoo', 'amazon', 'yahoo', 'microsoft', 'google'])
+            tld = random.choice(['org', 'com', 'net', 'io', 'com.ph', 'co.uk'])
+            userdata = UserCreate(email=EmailStr(f'devuser-{num}@{host}.{tld}'),
+                                  password='pass123')
+            create_user = get_create_user(userdb, UserDB)
+            created_user = await create_user(userdata, safe=True)
+            user = await UserMod.get(pk=created_user.id)
+            user.is_verified = True
+            await user.save()
+            await user.groups.add(*groups)
+            await finish_account_setup(user)
     
         # Tests use this ret so keep it as is (don't make it a succcess string)
         return ret
