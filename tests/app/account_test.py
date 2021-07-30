@@ -323,32 +323,32 @@ def test_activemanager(tempdb, loop):
         
         usercount = await UserMod.all().count()
         fullcount = await UserMod.full.all().count()
-        assert usercount == 2
-        assert fullcount == 2
+        assert usercount == 4
+        assert fullcount == 4
         
         usermod.is_active = False
         usermod.deleted_at = None
         await usermod.save(update_fields=['is_active', 'deleted_at'])
         usercount = await UserMod.all().count()
         fullcount = await UserMod.full.all().count()
-        assert usercount == 1
-        assert fullcount == 2
+        assert usercount == 3
+        assert fullcount == 4
 
         usermod.is_active = True
         usermod.deleted_at = now
         await usermod.save(update_fields=['is_active', 'deleted_at'])
         usercount = await UserMod.all().count()
         fullcount = await UserMod.full.all().count()
-        assert usercount == 1
-        assert fullcount == 2
+        assert usercount == 3
+        assert fullcount == 4
 
         usermod.is_active = True
         usermod.deleted_at = None
         await usermod.save(update_fields=['is_active', 'deleted_at'])
         usercount = await UserMod.all().count()
         fullcount = await UserMod.full.all().count()
-        assert usercount == 2
-        assert fullcount == 2
+        assert usercount == 4
+        assert fullcount == 4
         
     loop.run_until_complete(ab())
 

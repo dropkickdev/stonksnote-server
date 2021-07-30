@@ -48,6 +48,7 @@ def auth_headers_tempdb(tempdb, loop):
     async def ab():
         return await tempdb()
     user = loop.run_until_complete(ab())
+    # ic(type(user), user)
     
     token_data = {
         "user_id": str(user.id),
@@ -73,10 +74,10 @@ async def db():
 @pytest.fixture
 def fixtures():
     async def ab():
-        await init(),
-        await create_options(),
-        user = await create_users(),
-        await create_taxo(),
+        await init()
+        await create_options()
+        user = await create_users()
+        await create_taxo()
         return user
     yield ab
     

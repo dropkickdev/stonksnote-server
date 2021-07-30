@@ -178,30 +178,31 @@ async def create_users():
         create_user = get_create_user(userdb, UserDB)
         created_user = await create_user(userdata, safe=True)
 
-        user = await UserMod.get(pk=created_user.id)
-        user.is_verified = True
-        user.is_superuser = True
-        await user.save()
-        await user.groups.add(*groups)
-        user = await finish_account_setup(user)
+        usermod = await UserMod.get(pk=created_user.id)
+        usermod.is_verified = True
+        usermod.is_superuser = True
+        await usermod.save()
+        await usermod.groups.add(*groups)
+        usermod = await finish_account_setup(usermod)
 
         # Perms for User 1
         ll = []
         userperms = await Permission.filter(code__in=enchance_only_perms).only('id')
         for perm in userperms:
-            ll.append(UserPermissions(user=user, permission=perm, author=user))
+            ll.append(UserPermissions(user=usermod, permission=perm, author=usermod))
         await UserPermissions.bulk_create(ll)
-        ret = user
+        ret = usermod
 
         # User 2
         userdata = UserCreate(email=EmailStr(UNVERIFIED_EMAIL_DEMO), password='pass123')
         create_user = get_create_user(userdb, UserDB)
         created_user = await create_user(userdata, safe=True)
-        user = await UserMod.get(pk=created_user.id)
-        await user.groups.add(*groups)
-        await finish_account_setup(user)
+        usermod = await UserMod.get(pk=created_user.id)
+        await usermod.groups.add(*groups)
+        await finish_account_setup(usermod)
 
         # Dev users
+        # If you change range then change test_activemanager() as well
         for num in range(1, 3):
             host = random.choice(['gmail', 'yahoo', 'amazon', 'yahoo', 'microsoft', 'google'])
             tld = random.choice(['org', 'com', 'net', 'io', 'com.ph', 'co.uk'])
@@ -209,11 +210,11 @@ async def create_users():
                                   password='pass123')
             create_user = get_create_user(userdb, UserDB)
             created_user = await create_user(userdata, safe=True)
-            user = await UserMod.get(pk=created_user.id)
-            user.is_verified = True
-            await user.save()
-            await user.groups.add(*groups)
-            await finish_account_setup(user)
+            usermod = await UserMod.get(pk=created_user.id)
+            usermod.is_verified = True
+            await usermod.save()
+            await usermod.groups.add(*groups)
+            await finish_account_setup(usermod)
     
         # Tests use this ret so keep it as is (don't make it a succcess string)
         return ret

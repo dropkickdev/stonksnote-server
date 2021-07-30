@@ -15,25 +15,28 @@ from app.auth import UserMod
 
 
 
+broker_fields = ('id', 'name', 'short', 'brokerno', 'rating', 'logo', 'currency', 'buyfees', 'sellfees')
 
 class Trader:
     usermod: UserMod
     broker: Broker
     broker_list: list
     
+    
     def __init__(self, usermod: UserMod):
         self.usermod = usermod
         self.currency = self.usermod.currency
-        
-        # self.broker_list = brokers and listify(brokers) or []       # Not saved to db yet
-        # self.broker = self.broker_list and self.broker_list[0] or None
-        #
-        # ll = []
-        # for i in self.broker_list:
-        #     is_primary = primary and primary.id == i.id or False        # noqa
-        #     ll.append(UserBrokers(user=self.usermod, broker=i, is_primary=is_primary,
-        #                           wallet=wallet))
-        # UserBrokers.bulk_create(ll)
+
+    def cleanup_ublist(self, ublist: List[UserBrokers]):
+        for idx, i in enumerate(ublist):
+            ublist[idx].name = i.broker.name                                       # noqa
+            ublist[idx].short = i.broker.short                                     # noqa
+            ublist[idx].brokerno = i.broker.brokerno                               # noqa
+            ublist[idx].rating = i.broker.rating                                   # noqa
+            ublist[idx].logo = i.broker.logo                                       # noqa
+            ublist[idx].currency = i.broker.currency                               # noqa
+            ublist[idx].wallet = float(i.wallet)                                   # noqa
+        return ublist
 
     async def has_primary(self):
         return await UserBrokers.exists(user=self.usermod, is_primary=True)
@@ -43,90 +46,65 @@ class Trader:
 
     # TESTME: Untested ready
     async def get_primary(self, *, as_instance: bool = False):
+        """
+        Get the primary broker
+        :param as_instance: Return dict or instance
+        :return:            list or None
+        """
         if not await self.has_primary():
             return
         
-        query = Broker.get_or_none(userbrokers__user=self.usermod, userbrokers__is_primary=True)
+        query = UserBrokers.get_or_none(user=self.usermod, is_primary=True)
         return await self._query_userbroker(query, as_instance)
 
     # TESTME: Untested ready
     async def get_broker(self, id: int, *, as_instance: bool = False):
+        """
+        Get any of your brokers
+        :param id:          Broker id
+        :param as_instance: Return dict or instance
+        :return:            list or None
+        """
         if not await self.has_brokers():
             return
         
-        query = Broker.get_or_none(userbrokers__user=self.usermod, userbrokers__broker_id=id)
+        query = UserBrokers.get_or_none(user=self.usermod, broker_id=id)
         return await self._query_userbroker(query, as_instance)
 
 
-    @staticmethod
-    async def _query_userbroker(query: QuerySetSingle, as_instance: bool):
-        fields = ['id', 'name', 'short', 'brokerno', 'rating', 'logo', 'currency', 'buyfees',
-                  'sellfees']
+    async def _query_userbroker(self, query: QuerySetSingle, as_instance: bool):
+        """
+        Consolidated
+        :param query:       Starting query
+        :param as_instance: Return dict or instance
+        :return:            List[Union[dict, UserBrokers]]
+        """
+        fields = ('id', 'broker_id', 'is_primary', 'wallet', 'user_id')
         
         if not as_instance:
-            query = query.values(*fields, is_primary='userbrokers__is_primary',
-                                 wallet='userbrokers__wallet')
-            # Returns a list even if you're using get() since userbrokers is M2M
-            broker = await query
-            return broker
+            dict_fields = {i: f'broker__{i}' for i in broker_fields if i != 'id'}
+            return await query.values(*fields, **dict_fields)
     
         query = query.prefetch_related(
-            Prefetch('userbrokers', UserBrokers.all() \
-                     .only('id', 'broker_id', 'is_primary', 'wallet'), to_attr='ubs')
-        )
-        broker = await query.only(*fields)
+            Prefetch('broker', Broker.all().only(*broker_fields), to_attr='broker'),
+        ).only(*fields)
+        ublist = await query
     
-        # Cleanup
-        if broker:
-            broker.is_primary = broker.ubs and broker.ubs[0].is_primary or None
-            broker.wallet = broker.ubs and broker.ubs[0].wallet or None
-            broker.ubs = broker.ubs and broker.ubs[0] or None
-            broker.buyfees = float(broker.buyfees)
-            broker.sellfees = float(broker.sellfees)
-            broker.ubs.wallet = float(broker.ubs.wallet)
-    
-        return broker
+        # Cleanup and return
+        return self.cleanup_ublist(ublist)
         
 
     async def get_brokers(self, as_instance: bool = False) -> List[Union[UserBrokers, dict]]:
         """
         Get the brokers of a user
-        :param as_instance: Return dict or objects
+        :param as_instance: Return dict or instance
         :return:            list of UserBrokers/dict
         """
-        fields = ('id', 'broker_id', 'is_primary', 'wallet', 'user_id')
         if not await self.has_brokers():
             return []
-        
-        if not as_instance:
-            return await UserBrokers.filter(user=self.usermod) \
-                .values(*fields,
-                        name='broker__name',
-                        short='broker__short',
-                        brokerno='broker__brokerno',
-                        rating='broker__rating',
-                        logo='broker__logo',
-                        currency='broker__currency')
 
-        # When getting brokers always get UserBrokers not Broker
         query = UserBrokers.filter(user=self.usermod)
-        query = query.prefetch_related(
-            Prefetch('broker',
-                     Broker.all().only('id', 'name', 'short', 'brokerno', 'rating', 'logo', 'currency'),
-                     to_attr='broker'),
-        ).only(*fields)
-        broker_list = await query
-
-        # Cleanup
-        for idx, i in enumerate(broker_list):
-            broker_list[idx].name = i.broker.name                                           # noqa
-            broker_list[idx].short = i.broker.short                                         # noqa
-            broker_list[idx].brokerno = i.broker.brokerno                                   # noqa
-            broker_list[idx].rating = i.broker.rating                                       # noqa
-            broker_list[idx].logo = i.broker.logo                                           # noqa
-            broker_list[idx].currency = i.broker.currency                                   # noqa
-            broker_list[idx].wallet = float(i.wallet)                                       # noqa
-        return broker_list
+        return await self._query_userbroker(query, as_instance)
 
     
     # TESTME: Untested: ready

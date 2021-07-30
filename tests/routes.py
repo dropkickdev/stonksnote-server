@@ -10,6 +10,7 @@ from tests.app.data import VERIFIED_EMAIL_DEMO
 from trades import Trader
 
 
+
 testrouter = APIRouter()
 
 @testrouter.post('/dev_user_data')

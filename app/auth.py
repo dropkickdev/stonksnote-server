@@ -56,8 +56,6 @@ async def finish_account_setup(usermod: UserMod):
             ll.append(Option(name=name, value=val, user=usermod))
         await Option.bulk_create(ll)
         
-        
-        
         # TODO: Put Collections someplace else. This causes a circular import error.
         # # Add collections
         # ll = []
