@@ -88,32 +88,44 @@ class Trader:
         return broker
         
 
-    async def get_brokers(self, as_instance: bool = False) -> list:
+    async def get_brokers(self, as_instance: bool = False) -> List[Union[UserBrokers, dict]]:
         """
         Get the brokers of a user
         :param as_instance: Return dict or objects
-        :return:            list
+        :return:            list of UserBrokers/dict
         """
-        fields = ['id', 'name', 'short', 'brokerno', 'rating', 'logo', 'currency']
-        
+        fields = ('id', 'broker_id', 'is_primary', 'wallet', 'user_id')
         if not await self.has_brokers():
             return []
         
         if not as_instance:
-            return await Broker.filter(userbrokers__user=self.usermod) \
-                .values(*fields, is_primary='userbrokers__is_primary', wallet='userbrokers__wallet')
+            return await UserBrokers.filter(user=self.usermod) \
+                .values(*fields,
+                        name='broker__name',
+                        short='broker__short',
+                        brokerno='broker__brokerno',
+                        rating='broker__rating',
+                        logo='broker__logo',
+                        currency='broker__currency')
 
-        broker_list = await Broker.filter(userbrokers__user=self.usermod).prefetch_related(
-            Prefetch('userbrokers', UserBrokers.all()\
-                     .only('id', 'broker_id', 'is_primary', 'wallet', 'user_id'),
-                     to_attr='ubs_record')
+        # When getting brokers always get UserBrokers not Broker
+        query = UserBrokers.filter(user=self.usermod)
+        query = query.prefetch_related(
+            Prefetch('broker',
+                     Broker.all().only('id', 'name', 'short', 'brokerno', 'rating', 'logo', 'currency'),
+                     to_attr='broker'),
         ).only(*fields)
+        broker_list = await query
 
         # Cleanup
         for idx, i in enumerate(broker_list):
-            broker_list[idx].is_primary = i.ubs_record[0].is_primary                        # noqa
-            broker_list[idx].wallet = float(i.ubs_record[0].wallet)                         # noqa
-            broker_list[idx].ubs_record = i.ubs_record[0]                                   # noqa
+            broker_list[idx].name = i.broker.name                                           # noqa
+            broker_list[idx].short = i.broker.short                                         # noqa
+            broker_list[idx].brokerno = i.broker.brokerno                                   # noqa
+            broker_list[idx].rating = i.broker.rating                                       # noqa
+            broker_list[idx].logo = i.broker.logo                                           # noqa
+            broker_list[idx].currency = i.broker.currency                                   # noqa
+            broker_list[idx].wallet = float(i.wallet)                                       # noqa
         return broker_list
 
     

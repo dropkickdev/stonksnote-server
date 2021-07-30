@@ -202,7 +202,7 @@ async def create_users():
         await finish_account_setup(user)
 
         # Dev users
-        for num in range(1, 4):
+        for num in range(1, 3):
             host = random.choice(['gmail', 'yahoo', 'amazon', 'yahoo', 'microsoft', 'google'])
             tld = random.choice(['org', 'com', 'net', 'io', 'com.ph', 'co.uk'])
             userdata = UserCreate(email=EmailStr(f'devuser-{num}@{host}.{tld}'),
