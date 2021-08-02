@@ -3,8 +3,9 @@ from typing import List
 from pydantic import BaseSettings, Field, EmailStr
 from dotenv import load_dotenv
 
-load_dotenv(override=True)
 
+
+load_dotenv(override=True)
 
 class Base(BaseSettings):
     DEBUG: bool = os.getenv('DEBUG')
