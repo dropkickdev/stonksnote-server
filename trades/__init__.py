@@ -27,7 +27,9 @@ class Trader:
         self.usermod = usermod
         self.currency = self.usermod.currency
 
-    def cleanup_ublist(self, ublist: List[UserBrokers]):
+
+    def cleanup_ublist(self, ublist: Union[UserBrokers, List[UserBrokers]]):
+        ublist = listify(ublist)
         for idx, i in enumerate(ublist):
             ublist[idx].name = i.broker.name                                       # noqa
             ublist[idx].short = i.broker.short                                     # noqa
@@ -35,53 +37,59 @@ class Trader:
             ublist[idx].rating = i.broker.rating                                   # noqa
             ublist[idx].logo = i.broker.logo                                       # noqa
             ublist[idx].currency = i.broker.currency                               # noqa
+            ublist[idx].buyfees = float(i.broker.buyfees)                          # noqa
+            ublist[idx].sellfees = float(i.broker.sellfees)                        # noqa
             ublist[idx].wallet = float(i.wallet)                                   # noqa
         return ublist
+
 
     async def has_primary(self):
         return await UserBrokers.exists(user=self.usermod, is_primary=True)
 
+
     async def has_brokers(self):
         return await UserBrokers.exists(user=self.usermod)
 
-    # TESTME: Untested ready
-    async def get_primary(self, *, as_instance: bool = False):
+
+    async def get_primary(self, *, as_dict: bool = False):
         """
         Get the primary broker
-        :param as_instance: Return dict or instance
+        :param as_dict: Return dict or instance
         :return:            list or None
         """
         if not await self.has_primary():
             return
         
         query = UserBrokers.get_or_none(user=self.usermod, is_primary=True)
-        return await self._query_userbroker(query, as_instance)
+        userbroker = (await self._query_userbroker(query, as_dict))[0]
+        return userbroker
 
-    # TESTME: Untested ready
-    async def get_broker(self, id: int, *, as_instance: bool = False):
+
+    async def get_broker(self, id: int, *, as_dict: bool = False):
         """
         Get any of your brokers
         :param id:          Broker id
-        :param as_instance: Return dict or instance
+        :param as_dict: Return dict or instance
         :return:            list or None
         """
         if not await self.has_brokers():
             return
         
         query = UserBrokers.get_or_none(user=self.usermod, broker_id=id)
-        return await self._query_userbroker(query, as_instance)
+        userbroker = (await self._query_userbroker(query, as_dict))[0]
+        return userbroker
 
 
-    async def _query_userbroker(self, query: QuerySetSingle, as_instance: bool):
+    async def _query_userbroker(self, query: QuerySetSingle, as_dict: bool) -> list:
         """
         Consolidated
         :param query:       Starting query
-        :param as_instance: Return dict or instance
+        :param as_dict: Return dict or instance
         :return:            List[Union[dict, UserBrokers]]
         """
         fields = ('id', 'broker_id', 'is_primary', 'wallet', 'user_id')
         
-        if not as_instance:
+        if as_dict:
             dict_fields = {i: f'broker__{i}' for i in broker_fields if i != 'id'}
             return await query.values(*fields, **dict_fields)
     
@@ -94,20 +102,19 @@ class Trader:
         return self.cleanup_ublist(ublist)
         
 
-    async def get_brokers(self, as_instance: bool = False) -> List[Union[UserBrokers, dict]]:
+    async def get_brokers(self, as_dict: bool = False) -> List[Union[UserBrokers, dict]]:
         """
         Get the brokers of a user
-        :param as_instance: Return dict or instance
+        :param as_dict: Return dict or instance
         :return:            list of UserBrokers/dict
         """
         if not await self.has_brokers():
             return []
 
         query = UserBrokers.filter(user=self.usermod)
-        return await self._query_userbroker(query, as_instance)
+        return await self._query_userbroker(query, as_dict=as_dict)
 
     
-    # TESTME: Untested: ready
     async def set_primary(self, id: int) -> None:
         """
         Set a new primary broker for this user
@@ -125,7 +132,6 @@ class Trader:
                         await i.save(update_fields=['is_primary'])
 
 
-    # TESTME: Untested: ready
     async def unset_primary(self) -> None:
         """
         Unset the primary broker
@@ -146,6 +152,9 @@ class Trader:
         :param meta:        Meta data. Valid only if single Broker.
         :return:            None
         """
+        if not broker:
+            return
+        
         broker_list = listify(broker)
         
         if isinstance(broker, Broker):
@@ -176,10 +185,10 @@ class Trader:
     
     
     # TESTME: Untested: ready
-    async def get_stash(self, equity: Equity, *, as_instance: bool = False):
+    async def get_stash(self, equity: Equity, *, as_dict: bool = False):
         fields = ('id', 'shares', 'is_resolved', 'updated_at')
         query = Stash.get_or_none(user=self.usermod, equity=equity)
-        if as_instance:
+        if as_dict:
             return await query.prefetch_related(
                 Prefetch('equity', Equity.all().only('id', 'ticker', 'category', 'status'),
                          to_attr='equity')
@@ -193,11 +202,11 @@ class Trader:
                         broker: Optional[Broker] = None, currency: Optional[str] = None):
         if not broker:
             if await self.has_primary():
-                broker = await self.get_primary(as_instance=True)
+                broker = await self.get_primary()
             else:
                 if await self.has_brokers():
                     ub = await UserBrokers.filter(user=self.usermod).first().values('id')
-                    broker = await self.get_broker(ub['id'], as_instance=True)
+                    broker = await self.get_broker(ub['id'])
                     await self.set_primary(broker.id)
                 else:
                     raise x.MissingBrokersError()
@@ -209,7 +218,7 @@ class Trader:
         currency = currency or broker.currency
 
         async with in_transaction():
-            stash = await self.get_stash(equity, as_instance=True)
+            stash = await self.get_stash(equity)
             if not stash:
                 stash = await Stash.create(user=self.usermod, equity=equity, author=self.usermod)
             
@@ -225,11 +234,11 @@ class Trader:
                         broker: Optional[Broker] = None, currency: Optional[str] = None):
         if not broker:
             if await self.has_primary():
-                broker = await self.get_primary(as_instance=True)
+                broker = await self.get_primary()
             else:
                 if await self.has_brokers():
                     ub = await UserBrokers.filter(user=self.usermod).first().values('id')
-                    broker = await self.get_broker(ub['id'], as_instance=True)
+                    broker = await self.get_broker(ub['id'])
                     await self.set_primary(broker.id)
                 else:
                     raise x.MissingBrokersError()
@@ -241,7 +250,7 @@ class Trader:
         currency = currency or broker.currency
 
         async with in_transaction():
-            stash = await self.get_stash(equity, as_instance=True)
+            stash = await self.get_stash(equity)
             if not stash:
                 stash = await Stash.create(user=self.usermod, equity=equity, author=self.usermod)
             # ic(type(stash), vars(stash))
