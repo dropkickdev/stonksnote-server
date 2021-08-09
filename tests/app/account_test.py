@@ -2,6 +2,9 @@ import pytest, pytz
 from datetime import datetime
 from collections import Counter
 from limeutils import listify
+from tortoise import Tortoise
+from tortoise.transactions import in_transaction
+from tortoise.query_utils import Q
 
 import app.fixtures.datastore
 from app import ic, cache
@@ -314,8 +317,8 @@ def test_has_perm(tempdb, loop):
     loop.run_until_complete(ab())
 
 
-# @pytest.mark.focus
-def test_activemanager(tempdb, loop):
+@pytest.mark.focus
+def test_curatormanager(tempdb, loop):
     async def ab():
         await tempdb()
         now = datetime.now(tz=pytz.UTC)
@@ -325,15 +328,15 @@ def test_activemanager(tempdb, loop):
         fullcount = await UserMod.full.all().count()
         assert usercount == 4
         assert fullcount == 4
-        
-        # is_active isn't being checked by CuratorM anymore
-        usermod.is_active = False
-        usermod.deleted_at = None
-        await usermod.save(update_fields=['is_active', 'deleted_at'])
-        usercount = await UserMod.all().count()
-        fullcount = await UserMod.full.all().count()
-        assert usercount == 4
-        assert fullcount == 4
+
+        # # Not needed anymore since is_active isn't being checked by CuratorM anymore
+        # usermod.is_active = False
+        # usermod.deleted_at = None
+        # await usermod.save(update_fields=['is_active', 'deleted_at'])
+        # usercount = await UserMod.all().count()
+        # fullcount = await UserMod.full.all().count()
+        # assert usercount == 4
+        # assert fullcount == 4
 
         # usermod.is_active = True
         usermod.deleted_at = now
@@ -342,7 +345,40 @@ def test_activemanager(tempdb, loop):
         fullcount = await UserMod.full.all().count()
         assert usercount == 3
         assert fullcount == 4
-
+        
+        # y = await UserMod.full.all().values_list('deleted_at', flat=True)
+        # ic(y)
+        # x = UserMod.filter(deleted_at__not_isnull=True).count()
+        # ic(x.sql())
+        # ic(await x)
+        # x = UserMod.filter(deleted_at__isnull=False).count()
+        # ic(x.sql())
+        # ic(await x)
+        # x = UserMod.filter(deleted_at__not=None).count()
+        # ic(x.sql())
+        # ic(await x)
+        # x = UserMod.filter(deleted_at__not_isnull=True).count()
+        # ic(x.sql())
+        # ic(await x)
+        # x = UserMod.filter(Q(deleted_at__isnull=False)).count()
+        # ic(x.sql())
+        # ic(await x)
+        # x = UserMod.filter(~Q(deleted_at__isnull=True)).count()
+        # ic(x.sql())
+        # ic(await x)
+        # x = UserMod.filter(~Q(deleted_at__isnull=True)).count()
+        # ic(x.sql())
+        # ic(await x)
+        # # assert assert x == 1
+        
+        # # For some reason you can't query non-null fields so here is the sql version
+        # conn = Tortoise.get_connection('default')
+        # count = await conn.execute_query_dict(
+        #     'SELECT COUNT(*) count FROM auth_user WHERE deleted_at IS NOT NULL'            # noqa
+        # )
+        # count = count[0].get('count')
+        # assert count == 1
+        
         # usermod.is_active = True
         usermod.deleted_at = None
         await usermod.save(update_fields=['is_active', 'deleted_at'])
@@ -355,7 +391,14 @@ def test_activemanager(tempdb, loop):
 
 
 
-
+# @pytest.mark.focus
+# def test_foc2(loop):
+#     async def ab():
+#         y = await UserMod.full.all().values('id', 'deleted_at')
+#         ic(y)
+#
+#     loop.run_until_complete(ab())
+#     ic('xxx')
 
 
 

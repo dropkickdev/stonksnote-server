@@ -77,7 +77,7 @@ async def trades_data():
                     equity = random.choice(equity_list)
                     price = random.randint(100, 999) / 100
                     shares = random.randint(100, 10_000)
-                    
+
                     if random.choice([0, 1]):
                         await trader.buy_stock(equity, shares, price)
                     else:

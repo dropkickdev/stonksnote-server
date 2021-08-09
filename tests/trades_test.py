@@ -182,7 +182,6 @@ def test_marks(loop, tempdb, trades_fx):
 
         usermod_list = await UserMod.filter(is_verified=True).order_by('created_at').limit(1)
         equity_list = await Equity.all().only('id')
-        # random.shuffle(equity_list)
         e1, e2, e3, e4, *_ = equity_list
         
         for usermod in usermod_list:
