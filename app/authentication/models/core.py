@@ -12,7 +12,7 @@ from limeutils import modstr
 
 from app.cache import red
 from app.settings import settings as s
-from app.authentication.models.manager import ActiveManager
+from app.authentication.models.manager import CuratorM
 
 
 class DTMixin(object):
@@ -56,7 +56,7 @@ class Option(SharedMixin, models.Model):
 
     class Meta:
         table = 'core_option'
-        manager = ActiveManager()
+        manager = CuratorM()
 
     def __str__(self):
         return modstr(self, 'name')
@@ -87,7 +87,7 @@ class Visitor(models.Model):
 
     class Meta:
         table = 'core_visitor'
-        manager = ActiveManager()
+        manager = CuratorM()
 
     def __str__(self):
         return modstr(self, 'user')
@@ -116,7 +116,7 @@ class Taxonomy(DTMixin, SharedMixin, models.Model):
     class Meta:
         table = 'core_taxonomy'
         unique_together = (('name', 'tier'),)
-        manager = ActiveManager()
+        manager = CuratorM()
 
     def __str__(self):
         return modstr(self, 'name')
@@ -177,7 +177,7 @@ class Token(DTMixin, SharedMixin, models.Model):
 
     class Meta:
         table = 'auth_token'
-        manager = ActiveManager()
+        manager = CuratorM()
 
     def __str__(self):
         return modstr(self, 'token')
@@ -200,7 +200,7 @@ class Media(DTMixin, SharedMixin, models.Model):
     
     class Meta:
         table = 'core_media'
-        manager = ActiveManager()
+        manager = CuratorM()
     
     def __str__(self):
         return modstr(self, f'{self.filename}.{self.ext}')
@@ -216,7 +216,7 @@ class Note(DTMixin, SharedMixin, models.Model):
     
     class Meta:
         table = 'core_note'
-        manager = ActiveManager()
+        manager = CuratorM()
     
     def __str__(self):
         split = self.note.split()

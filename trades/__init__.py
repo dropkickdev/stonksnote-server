@@ -1,4 +1,6 @@
+import pytz
 from decimal import Decimal
+from datetime import datetime
 from typing import Optional, Tuple, Union, List
 from tortoise.query_utils import Prefetch, Q
 from tortoise.queryset import QuerySet, QuerySetSingle
@@ -46,10 +48,8 @@ class Trader:
     async def has_primary(self):
         return await UserBrokers.exists(user=self.usermod, is_primary=True)
 
-
     async def has_brokers(self):
         return await UserBrokers.exists(user=self.usermod)
-
 
     async def get_primary(self, *, as_dict: bool = False):
         """
@@ -64,7 +64,6 @@ class Trader:
         userbroker = (await self._query_userbroker(query, as_dict))[0]
         return userbroker
 
-
     async def get_broker(self, id: int, *, as_dict: bool = False):
         """
         Get any of your brokers
@@ -78,7 +77,6 @@ class Trader:
         query = UserBrokers.get_or_none(user=self.usermod, broker_id=id)
         userbroker = (await self._query_userbroker(query, as_dict))[0]
         return userbroker
-
 
     async def _query_userbroker(self, query: QuerySetSingle, as_dict: bool) -> list:
         """
@@ -113,7 +111,6 @@ class Trader:
 
         query = UserBrokers.filter(user=self.usermod)
         return await self._query_userbroker(query, as_dict=as_dict)
-
     
     async def set_primary(self, id: int) -> None:
         """
@@ -131,7 +128,6 @@ class Trader:
                         i.is_primary = False
                         await i.save(update_fields=['is_primary'])
 
-
     async def unset_primary(self) -> None:
         """
         Unset the primary broker
@@ -140,7 +136,6 @@ class Trader:
         if ub := await UserBrokers.get_or_none(user=self.usermod, is_primary=True).only('id', 'is_primary'):
             ub.is_primary = False
             await ub.save(update_fields=['is_primary'])
-    
     
     async def add_broker(self, broker: Union[Broker, List[Broker]], *, wallet: float = 0,
                          is_primary: bool = False, meta: Optional[dict] = None) -> None:
@@ -177,12 +172,14 @@ class Trader:
             return
         broker = listify(broker)
         await self.usermod.brokers.remove(*broker)
-    
+
+    # TESTME: Untested
+    async def add_stash(self, equity: Equity, **kwargs):
+        pass
     
     # TESTME: Untested ready
     async def has_stash(self, equity: Equity):
         return await Stash.exists(user=self.usermod, equity=equity)
-    
     
     # TESTME: Untested: ready
     async def get_stash(self, equity: Equity, *, as_dict: bool = False):
@@ -261,6 +258,37 @@ class Trader:
                                price=price, shares=shares, gross=gross, fees=fees, total=total,
                                currency=currency)
             return gross, fees, total, currency
+    
+    
+    async def add_mark(self, idlist: Union[int, List[int]], expires: Optional[datetime] = None,
+                       is_active: bool = True):
+        idlist = listify(idlist)
+        if equity_list := await Equity.filter(pk__in=idlist).only('id'):
+            # equity_idlist = [i.id for i in equity_list]
+            if existing := await Mark.filter(author=self.usermod, is_active=True)\
+                                     .values_list('equity_id', flat=True):
+                equity_list = list(filter(lambda x: x.id not in existing, equity_list))
+            ll = []
+            for equity in equity_list:
+                ll.append(Mark(expires=expires, equity=equity, author=self.usermod,
+                               is_active=is_active))
+            if ll:
+                await Mark.bulk_create(ll)
+    
+    async def clear_marks(self):
+        await Mark.filter(author=self.usermod, is_active=True).update(is_active=False)
+        
+    async def get_marks(self):
+        return await Mark.filter(author=self.usermod, is_active=True).only('id', 'equity_id')
+    
+    async def remove_mark(self, idlist: Union[int, List[int]]):
+        idlist = listify(idlist)
+        now = datetime.now(tz=pytz.UTC)
+        if idlist:
+            await Mark.filter(author=self.usermod, equity_id__in=idlist)\
+                      .update(deleted_at=now, is_active=False)
+    
+    
     
     
     # # TODO: Update this since the Stash table was added

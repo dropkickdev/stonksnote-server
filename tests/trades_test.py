@@ -4,17 +4,17 @@ from collections import Counter
 
 from app import ic
 from app.auth import UserMod
-from trades import Trade, Trader, Broker, UserBrokers
+from trades import Trade, Trader, Broker, UserBrokers, Stash, Mark, Equity
 from trades.fixtures.routes import trades_init, trades_data
 from tests.app.data import VERIFIED_EMAIL_DEMO
 
 
 
 # @pytest.mark.focus
-def test_add_broker(loop, tempdb, trades_fix):
+def test_add_broker(loop, tempdb, trades_fx):
     async def ab():
         await tempdb()
-        await trades_fix()
+        await trades_fx()
 
         usermod_list = await UserMod.filter(is_verified=True).order_by('created_at')
         for usermod in usermod_list:
@@ -55,10 +55,10 @@ def test_add_broker(loop, tempdb, trades_fix):
 
 
 # @pytest.mark.focus
-def test_remove_broker(loop, tempdb, trades_fix):
+def test_remove_broker(loop, tempdb, trades_fx):
     async def ab():
         await tempdb()
-        await trades_fix()
+        await trades_fx()
         
         usermod_list = await UserMod.filter(is_verified=True).order_by('created_at').limit(2)
         for usermod in usermod_list:
@@ -94,14 +94,14 @@ def test_remove_broker(loop, tempdb, trades_fix):
     
 
 # @pytest.mark.focus
-def test_brokers_and_primary(loop, tempdb, trades_fix):
+def test_brokers_and_primary(loop, tempdb, trades_fx):
     async def ab():
         await tempdb()
-        await trades_fix()
+        await trades_fx()
         
         # Try for no brokers, one broker, alternating broker
 
-        usermod_list = await UserMod.filter(is_verified=True).order_by('created_at').limit(1)
+        usermod_list = await UserMod.filter(is_verified=True).order_by('created_at').limit(3)
         broker_list = await Broker.all().limit(9)
         b1, b2, b3, *_ = broker_list
         
@@ -174,15 +174,63 @@ def test_brokers_and_primary(loop, tempdb, trades_fix):
     loop.run_until_complete(ab())
     
     
-@pytest.mark.focus
-def test_stash(loop, tempdb, trades_fix):
+# @pytest.mark.focus
+def test_marks(loop, tempdb, trades_fx):
     async def ab():
         await tempdb()
-        await trades_fix()
+        await trades_fx()
+
+        usermod_list = await UserMod.filter(is_verified=True).order_by('created_at').limit(1)
+        equity_list = await Equity.all().only('id')
+        # random.shuffle(equity_list)
+        e1, e2, e3, e4, *_ = equity_list
+        
+        for usermod in usermod_list:
+            trader = Trader(usermod)
+            active_equities = []
+            
+            count = await Mark.filter(author=usermod).count()
+            assert count == 0
+            
+            param = [
+                (e1.id, None, 1), (e1.id, None, 1), ([e2.id, e3.id], None, 3),
+                ([e1.id, e4.id], None, 4), (None, None, 0),
+                ([e1.id], [], 1), ([e1.id, e2.id], e1.id, 1),
+                (None, [e2.id], 0), ([e1.id, e2.id, e3.id], [], 3),
+                ([], e3.id, 2), (None, [e1.id, e2.id, e3.id, e4.id], 0),
+            ]
+            for addlist, removelist, count in param:
+                
+                if not addlist and not removelist and not count:
+                    await trader.clear_marks()
+                    active_equities = []
+                else:
+                    await trader.add_mark(addlist)
+                    if addlist:
+                        active_equities.extend(listify(addlist))
+                        
+                    await trader.remove_mark(removelist)
+                    if removelist:
+                        active_equities = list(set(active_equities) - set(listify(removelist)))
+                        
+                    active_equities = list(set(active_equities))
+                    
+                assert len(await trader.get_marks()) == count
+                
+                allmarks = await Mark.filter(author=usermod, is_active=True)\
+                                     .values_list('equity_id', flat=True)
+                assert Counter(allmarks) == Counter(active_equities)
         
     loop.run_until_complete(ab())
 
 
 # @pytest.mark.focus
-def test_wallet(loop, tempdb, trades_fix):
+def test_trades(loop, tempdb, trades_fx):
+    async def ab():
+        await tempdb()
+        await trades_fx()
+        
+
+# @pytest.mark.focus
+def test_wallet(loop, tempdb, trades_fx):
     pass

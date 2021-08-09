@@ -13,7 +13,7 @@ from limeutils import modstr, setup_pagination
 from app import ic
 from app.settings import settings as s
 from app.auth import UserDB, UserMod
-from app.authentication.models.manager import ActiveManager
+from app.authentication.models.manager import CuratorM
 from app.authentication.models.core import DTMixin, SharedMixin, Taxonomy, Note
 from .resource import TradeData
 
@@ -44,7 +44,7 @@ class Broker(DTMixin, SharedMixin, models.Model):
     
     class Meta:
         table = 'trades_broker'
-        manager = ActiveManager()
+        manager = CuratorM()
     
     def __str__(self):
         return modstr(self, 'name')
@@ -68,7 +68,7 @@ class UserBrokers(DTMixin, SharedMixin, models.Model):
     
     class Meta:
         table = 'trades_xuserbrokers'
-        manager = ActiveManager()
+        manager = CuratorM()
     
     def __str__(self):
         return modstr(self, 'broker')
@@ -107,7 +107,7 @@ class Owner(DTMixin, SharedMixin, models.Model):
 
     class Meta:
         table = 'trades_owner'
-        manager = ActiveManager()
+        manager = CuratorM()
 
     def __str__(self):
         return modstr(self, 'name')
@@ -131,7 +131,7 @@ class Equity(DTMixin, SharedMixin, models.Model):
 
     class Meta:
         table = 'trades_equity'
-        manager = ActiveManager()
+        manager = CuratorM()
         
     def __str__(self):
         return modstr(self, 'ticker')
@@ -151,7 +151,7 @@ class Collection(DTMixin, SharedMixin, models.Model):
     
     class Meta:
         table = 'trades_collection'
-        manager = ActiveManager()
+        manager = CuratorM()
     
     def __str__(self):
         return modstr(self, 'name')
@@ -185,7 +185,7 @@ class Trade(DTMixin, SharedMixin, models.Model):
     
     class Meta:
         table = 'trades_trade'
-        manager = ActiveManager()
+        manager = CuratorM()
 
     def __str__(self):
         return modstr(self, 'stash__equity')
@@ -204,7 +204,7 @@ class Stash(DTMixin, SharedMixin, models.Model):
 
     class Meta:
         table = 'trades_stash'
-        manager = ActiveManager()
+        manager = CuratorM()
 
     def __str__(self):
         return modstr(self, 'equity')
@@ -232,7 +232,7 @@ class Mark(DTMixin, SharedMixin, models.Model):
 
     class Meta:
         table = 'trades_mark'
-        manager = ActiveManager()
+        manager = CuratorM()
 
 
 # class EquityHistory(DTMixin, SharedMixin, models.Model):

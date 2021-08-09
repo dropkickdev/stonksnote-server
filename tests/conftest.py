@@ -82,7 +82,7 @@ def fixtures():
     yield ab
     
 @pytest.fixture
-def trades_fix():
+def trades_fx():
     async def ab():
         await trades_init()
     yield ab

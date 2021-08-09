@@ -326,15 +326,16 @@ def test_activemanager(tempdb, loop):
         assert usercount == 4
         assert fullcount == 4
         
+        # is_active isn't being checked by CuratorM anymore
         usermod.is_active = False
         usermod.deleted_at = None
         await usermod.save(update_fields=['is_active', 'deleted_at'])
         usercount = await UserMod.all().count()
         fullcount = await UserMod.full.all().count()
-        assert usercount == 3
+        assert usercount == 4
         assert fullcount == 4
 
-        usermod.is_active = True
+        # usermod.is_active = True
         usermod.deleted_at = now
         await usermod.save(update_fields=['is_active', 'deleted_at'])
         usercount = await UserMod.all().count()
@@ -342,7 +343,7 @@ def test_activemanager(tempdb, loop):
         assert usercount == 3
         assert fullcount == 4
 
-        usermod.is_active = True
+        # usermod.is_active = True
         usermod.deleted_at = None
         await usermod.save(update_fields=['is_active', 'deleted_at'])
         usercount = await UserMod.all().count()

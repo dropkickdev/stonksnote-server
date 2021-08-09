@@ -13,7 +13,7 @@ from redis.exceptions import RedisError
 
 from app import settings as s, exceptions as x, cache, red, ic
 from app.validation import UpdateGroupVM, UpdatePermissionVM
-from app.authentication.models.core import DTMixin, ActiveManager, SharedMixin, Option
+from app.authentication.models.core import DTMixin, CuratorM, SharedMixin, Option
 
 
 
@@ -75,7 +75,7 @@ class UserMod(DTMixin, TortoiseBaseUserModel):
 
     class Meta:
         table = 'auth_user'
-        manager = ActiveManager()
+        manager = CuratorM()
 
     def __str__(self):
         return modstr(self, 'id')
@@ -411,7 +411,7 @@ class Group(SharedMixin, models.Model):
     
     class Meta:
         table = 'auth_group'
-        manager = ActiveManager()
+        manager = CuratorM()
     
     def __str__(self):
         return modstr(self, 'name')
@@ -532,7 +532,7 @@ class Permission(SharedMixin, models.Model):
     
     class Meta:
         table = 'auth_permission'
-        manager = ActiveManager()
+        manager = CuratorM()
     
     def __str__(self):
         return modstr(self, 'name')
