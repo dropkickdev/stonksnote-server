@@ -408,6 +408,8 @@ class Group(SharedMixin, models.Model):
     permissions: M2MRel['Permission'] = M2MField('models.Permission', related_name='groups',
                                                  through='auth_group_permissions', backward_key='group_id')
     group_users: M2MRel['UserMod']
+
+    full = Manager()
     
     class Meta:
         table = 'auth_group'
@@ -529,6 +531,8 @@ class Permission(SharedMixin, models.Model):
     permission_users: M2MRel[UserMod]
     groups: M2MRel[Group]
     userpermissions: FKRel[UserPermissions]
+    
+    full = Manager()
     
     class Meta:
         table = 'auth_permission'

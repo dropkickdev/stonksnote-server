@@ -1,10 +1,13 @@
-import pytest, random
+import pytest, random, pytz
 from limeutils import listify
 from collections import Counter
+from datetime import datetime
+from tortoise import Tortoise
+from tortoise.query_utils import Q
 
 from app import ic
-from app.auth import UserMod
-from trades import Trade, Trader, Broker, UserBrokers, Stash, Mark, Equity
+from app.auth import UserMod, Option
+from trades import Trade, Trader, Broker, UserBrokers, Stash, Mark, Equity, Demox
 from trades.fixtures.routes import trades_init, trades_data
 from tests.app.data import VERIFIED_EMAIL_DEMO
 
@@ -233,3 +236,58 @@ def test_trades(loop, tempdb, trades_fx):
 # @pytest.mark.focus
 def test_wallet(loop, tempdb, trades_fx):
     pass
+
+
+@pytest.mark.focus
+def test_aaa(loop, db):
+    async def ab():
+        # await Demox.create(deleted_at=None)
+        # await Demox.create(deleted_at=None)
+        # x = await Demox.create(deleted_at=None)
+        # # ic(type(x), x, vars(x))
+        # await x.soft_delete()
+        # await Demox.create(deleted_at=None)
+        # x = await Demox.create(deleted_at=None)
+        # await x.soft_delete()
+        
+        # await Demox.bulk_create([
+        #     Demox.create(deleted_at=None),
+        #     Demox.create(deleted_at=datetime.utcnow()),
+        #     Demox.create(deleted_at=None),
+        #     Demox.create(deleted_at=datetime.now(tz=pytz.UTC)),
+        # ])
+
+        # y = await Demox.full.all()
+        # ic(y)
+        # x = Demox.filter(deleted_at__not_isnull=True).count()
+        # ic(x.sql())
+        # ic(await x)
+        # x = Demox.filter(deleted_at__isnull=False).count()
+        # ic(x.sql())
+        # ic(await x)
+        # x = Demox.filter(deleted_at__not=None).count()
+        # ic(x.sql())
+        # ic(await x)
+        # x = Demox.filter(deleted_at__not_isnull=True).count()
+        # ic(x.sql())
+        # ic(await x)
+        # x = Demox.filter(Q(deleted_at__isnull=False)).count()
+        # ic(x.sql())
+        # ic(await x)
+        # x = Demox.filter(~Q(deleted_at__isnull=True)).count()
+        # ic(x.sql())
+        # ic(await x)
+        # x = Demox.filter(~Q(deleted_at__isnull=True)).count()
+        # ic(x.sql())
+        # ic(await x)
+        # assert assert x == 1
+        
+        # x = await Option.all().count()
+        # ic(x)
+        # x = await Option.full.all().count()
+        # ic(x)
+        
+        ic('foo')
+    
+    loop.run_until_complete(ab())
+    

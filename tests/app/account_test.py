@@ -317,7 +317,7 @@ def test_has_perm(tempdb, loop):
     loop.run_until_complete(ab())
 
 
-@pytest.mark.focus
+# @pytest.mark.focus
 def test_curatormanager(tempdb, loop):
     async def ab():
         await tempdb()
@@ -345,31 +345,6 @@ def test_curatormanager(tempdb, loop):
         fullcount = await UserMod.full.all().count()
         assert usercount == 3
         assert fullcount == 4
-        
-        # y = await UserMod.full.all().values_list('deleted_at', flat=True)
-        # ic(y)
-        # x = UserMod.filter(deleted_at__not_isnull=True).count()
-        # ic(x.sql())
-        # ic(await x)
-        # x = UserMod.filter(deleted_at__isnull=False).count()
-        # ic(x.sql())
-        # ic(await x)
-        # x = UserMod.filter(deleted_at__not=None).count()
-        # ic(x.sql())
-        # ic(await x)
-        # x = UserMod.filter(deleted_at__not_isnull=True).count()
-        # ic(x.sql())
-        # ic(await x)
-        # x = UserMod.filter(Q(deleted_at__isnull=False)).count()
-        # ic(x.sql())
-        # ic(await x)
-        # x = UserMod.filter(~Q(deleted_at__isnull=True)).count()
-        # ic(x.sql())
-        # ic(await x)
-        # x = UserMod.filter(~Q(deleted_at__isnull=True)).count()
-        # ic(x.sql())
-        # ic(await x)
-        # # assert assert x == 1
         
         # # For some reason you can't query non-null fields so here is the sql version
         # conn = Tortoise.get_connection('default')

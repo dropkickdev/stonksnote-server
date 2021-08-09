@@ -2,6 +2,7 @@ from datetime import datetime
 from typing import Optional, List
 from decimal import Decimal
 from tortoise import models, fields as fl
+from tortoise.manager import Manager
 from tortoise.fields import (
     ForeignKeyRelation as FKRel, ManyToManyRelation as M2MRel, ReverseRelation as RRel,
     ForeignKeyField as FKField, ManyToManyField as M2MField
@@ -42,6 +43,8 @@ class Broker(DTMixin, SharedMixin, models.Model):
     userbrokers: RRel['UserBrokers']
     trades: RRel['Trade']
     
+    full = Manager()
+    
     class Meta:
         table = 'trades_broker'
         manager = CuratorM()
@@ -55,7 +58,6 @@ class Broker(DTMixin, SharedMixin, models.Model):
         pass
     
         
-
 class UserBrokers(DTMixin, SharedMixin, models.Model):
     user: FKRel[UserMod] = FKField('models.UserMod', related_name='userbrokers')
     broker: FKRel[Broker] = FKField('models.Broker', related_name='userbrokers')
@@ -65,6 +67,8 @@ class UserBrokers(DTMixin, SharedMixin, models.Model):
     
     is_primary = fl.BooleanField(default=False)
     meta = fl.JSONField(null=True)
+
+    full = Manager()
     
     class Meta:
         table = 'trades_xuserbrokers'
@@ -91,7 +95,6 @@ class UserBrokers(DTMixin, SharedMixin, models.Model):
         await self.save(update_fields=['wallet'])
 
 
-
 class Owner(DTMixin, SharedMixin, models.Model):
     name = fl.CharField(max_length=191)
     description = fl.CharField(max_length=191, default='')
@@ -104,6 +107,8 @@ class Owner(DTMixin, SharedMixin, models.Model):
     author: FKRel['UserMod'] = FKField('models.UserMod', related_name='author_owners')
 
     owner_equity: RRel['owner_equity']
+
+    full = Manager()
 
     class Meta:
         table = 'trades_owner'
@@ -129,6 +134,8 @@ class Equity(DTMixin, SharedMixin, models.Model):
     stash: RRel['Stash']
     equity_marks: RRel['Mark']
 
+    full = Manager()
+
     class Meta:
         table = 'trades_equity'
         manager = CuratorM()
@@ -148,6 +155,8 @@ class Collection(DTMixin, SharedMixin, models.Model):
     equity: M2MRel[Equity] = M2MField('models.Equity', related_name='equity_collections',
                                       through='trades_xequitycollections',
                                       backward_key='collection_id', forward_key='equity_id')
+
+    full = Manager()
     
     class Meta:
         table = 'trades_collection'
@@ -183,6 +192,8 @@ class Trade(DTMixin, SharedMixin, models.Model):
 
     basetrade_trades: RRel['Trade']
     
+    full = Manager()
+
     class Meta:
         table = 'trades_trade'
         manager = CuratorM()
@@ -199,9 +210,11 @@ class Stash(DTMixin, SharedMixin, models.Model):
     is_resolved = fl.BooleanField(default=True, index=True)
     meta = fl.JSONField(null=True)
     author: FKRel['UserMod'] = FKField('models.UserMod', related_name='author_stash')
-    
+
     trades: RRel['Trade']
 
+    full = Manager()
+    
     class Meta:
         table = 'trades_stash'
         manager = CuratorM()
@@ -230,6 +243,8 @@ class Mark(DTMixin, SharedMixin, models.Model):
     meta = fl.JSONField(null=True)
     author: FKRel['UserMod'] = FKField('models.UserMod', related_name='author_marks')
 
+    full = Manager()
+
     class Meta:
         table = 'trades_mark'
         manager = CuratorM()
@@ -256,3 +271,11 @@ class Mark(DTMixin, SharedMixin, models.Model):
 #     sts = fl.JSONField(null=True)
 #
 #     meta = fl.JSONField(null=True)
+
+
+class Demox(DTMixin, SharedMixin, models.Model):
+    full = Manager()
+    
+    class Meta:
+        table = 'demox'
+        manager = CuratorM()
