@@ -64,19 +64,31 @@ class Trader:
         userbroker = (await self._query_userbroker(query, as_dict))[0]
         return userbroker
 
-    async def get_broker(self, id: int, *, as_dict: bool = False):
+    async def find_userbroker(self, broker_id: int, *, as_dict: bool = False):
         """
         Get any of your brokers
-        :param id:          Broker id
-        :param as_dict: Return dict or instance
+        :param broker_id:   Broker id
+        :param as_dict:     Return dict or instance
         :return:            list or None
         """
         if not await self.has_brokers():
             return
         
-        query = UserBrokers.get_or_none(user=self.usermod, broker_id=id)
+        query = UserBrokers.get_or_none(user=self.usermod, broker_id=broker_id)
         userbroker = (await self._query_userbroker(query, as_dict))[0]
         return userbroker
+
+    async def get_userbrokers(self, as_dict: bool = False) -> List[Union[UserBrokers, dict]]:
+        """
+        Get the brokers of a user
+        :param as_dict: Return dict or instance
+        :return:            list of UserBrokers/dict
+        """
+        if not await self.has_brokers():
+            return []
+    
+        query = UserBrokers.filter(user=self.usermod)
+        return await self._query_userbroker(query, as_dict=as_dict)
 
     async def _query_userbroker(self, query: QuerySetSingle, as_dict: bool) -> list:
         """
@@ -98,19 +110,11 @@ class Trader:
     
         # Cleanup and return
         return self.cleanup_ublist(ublist)
-        
 
-    async def get_brokers(self, as_dict: bool = False) -> List[Union[UserBrokers, dict]]:
-        """
-        Get the brokers of a user
-        :param as_dict: Return dict or instance
-        :return:            list of UserBrokers/dict
-        """
-        if not await self.has_brokers():
-            return []
-
-        query = UserBrokers.filter(user=self.usermod)
-        return await self._query_userbroker(query, as_dict=as_dict)
+    async def get_userbroker(self, broker_id: Optional[int] = None):
+        if broker_id:
+            return await self.find_userbroker(broker_id)
+        return await self.get_primary()
     
     async def set_primary(self, id: int) -> None:
         """
@@ -160,6 +164,100 @@ class Trader:
                     return
         
         await self.usermod.brokers.add(*broker_list)
+        
+    async def get_wallet(self, broker_id: Optional[int] = None) -> float:
+        userbroker = await self.get_userbroker(broker_id)
+        return userbroker.wallet
+    
+    async def deposit(self, amount: float, broker_id: Optional[int] = None) -> float:
+        """
+        Deposit to a UserBroker
+        :param amount:      Amount to deposit
+        :param broker_id:   Broker id
+        :return:            New wallet amount
+        """
+        userbroker = await self.get_userbroker(broker_id)
+        if amount:
+            userbroker.wallet += amount
+            await userbroker.save(update_fields=['wallet'])
+        return userbroker.wallet
+
+    async def withdraw(self, amount: float, broker_id: Optional[int] = None) -> float:
+        userbroker = await self.get_userbroker(broker_id)
+        if amount:
+            userbroker.wallet -= amount
+            if userbroker.wallet < 0:
+                userbroker.wallet = 0
+            await userbroker.save(update_fields=['wallet'])
+        return userbroker.wallet
+
+    # TESTME: Untested ready
+    async def buy(self, equity: Equity, shares: int, price: float,
+                  broker: Optional[Broker] = None, currency: Optional[str] = None):
+        if not broker:
+            if await self.has_primary():
+                broker = await self.get_primary()
+            else:
+                if await self.has_brokers():
+                    ub = await UserBrokers.filter(user=self.usermod).first().values('id')
+                    broker = await self.find_userbroker(ub['id'])
+                    await self.set_primary(broker.id)
+                else:
+                    raise x.MissingBrokersError()
+
+        # ic(vars(broker))
+        gross = price * shares
+        fees = gross * broker.buyfees
+        total = gross + fees
+        currency = currency or broker.currency
+
+        async with in_transaction():
+            stash = await self.get_stash(equity)
+            if not stash:
+                stash = await Stash.create(user=self.usermod, equity=equity,
+                                           author=self.usermod)
+    
+            await stash.incr_stash(shares)
+            await broker.ubs.decr_wallet(total)
+            await Trade.create(stash=stash, broker=broker, action=1, author=self.usermod,
+                               price=price, shares=shares, gross=gross, fees=fees, total=total,
+                               currency=currency)
+            return gross, fees, total, currency
+
+    # TESTME: Untested
+    async def sell(self, equity: Equity, shares: int, price: float,
+                   broker: Optional[Broker] = None, currency: Optional[str] = None):
+        if not broker:
+            if await self.has_primary():
+                broker = await self.get_primary()
+            else:
+                if await self.has_brokers():
+                    ub = await UserBrokers.filter(user=self.usermod).first().values('id')
+                    broker = await self.find_userbroker(ub['id'])
+                    await self.set_primary(broker.id)
+                else:
+                    raise x.MissingBrokersError()
+
+        # ic(vars(broker))
+        gross = price * shares
+        fees = gross * broker.sellfees
+        total = gross - fees
+        currency = currency or broker.currency
+
+        async with in_transaction():
+            stash = await self.get_stash(equity)
+            if not stash:
+                stash = await Stash.create(user=self.usermod, equity=equity,
+                                           author=self.usermod)
+            # ic(type(stash), vars(stash))
+    
+            await stash.decr_stash(shares)
+            await broker.ubs.incr_wallet(total)
+            await Trade.create(stash=stash, broker=broker, action=2, author=self.usermod,
+                               price=price, shares=shares, gross=gross, fees=fees, total=total,
+                               currency=currency)
+            return gross, fees, total, currency
+
     
     
     async def remove_broker(self, broker: Union[Broker, List[Broker]]) -> None:
@@ -194,70 +292,7 @@ class Trader:
                                   category='equity__category', status='equity__status'))[0]
     
     
-    # TESTME: Untested ready
-    async def buy_stock(self, equity: Equity, shares: int, price: float,
-                        broker: Optional[Broker] = None, currency: Optional[str] = None):
-        if not broker:
-            if await self.has_primary():
-                broker = await self.get_primary()
-            else:
-                if await self.has_brokers():
-                    ub = await UserBrokers.filter(user=self.usermod).first().values('id')
-                    broker = await self.get_broker(ub['id'])
-                    await self.set_primary(broker.id)
-                else:
-                    raise x.MissingBrokersError()
-
-        # ic(vars(broker))
-        gross = price * shares
-        fees = gross * broker.buyfees
-        total = gross + fees
-        currency = currency or broker.currency
-
-        async with in_transaction():
-            stash = await self.get_stash(equity)
-            if not stash:
-                stash = await Stash.create(user=self.usermod, equity=equity, author=self.usermod)
-            
-            await stash.incr_stash(shares)
-            await broker.ubs.decr_wallet(total)
-            await Trade.create(stash=stash, broker=broker, action=1, author=self.usermod,
-                               price=price, shares=shares, gross=gross, fees=fees, total=total,
-                               currency=currency)
-            return gross, fees, total, currency
-
-    # TESTME: Untested
-    async def sell_stock(self, equity: Equity, shares: int, price: float,
-                        broker: Optional[Broker] = None, currency: Optional[str] = None):
-        if not broker:
-            if await self.has_primary():
-                broker = await self.get_primary()
-            else:
-                if await self.has_brokers():
-                    ub = await UserBrokers.filter(user=self.usermod).first().values('id')
-                    broker = await self.get_broker(ub['id'])
-                    await self.set_primary(broker.id)
-                else:
-                    raise x.MissingBrokersError()
-
-        # ic(vars(broker))
-        gross = price * shares
-        fees = gross * broker.sellfees
-        total = gross - fees
-        currency = currency or broker.currency
-
-        async with in_transaction():
-            stash = await self.get_stash(equity)
-            if not stash:
-                stash = await Stash.create(user=self.usermod, equity=equity, author=self.usermod)
-            # ic(type(stash), vars(stash))
-            
-            await stash.decr_stash(shares)
-            await broker.ubs.incr_wallet(total)
-            await Trade.create(stash=stash, broker=broker, action=2, author=self.usermod,
-                               price=price, shares=shares, gross=gross, fees=fees, total=total,
-                               currency=currency)
-            return gross, fees, total, currency
+    
     
     
     async def add_mark(self, idlist: Union[int, List[int]], expires: Optional[datetime] = None,
@@ -369,7 +404,8 @@ class Trader:
     
     async def get_ticketx(self, ticket: str):
         return
-    
+
+
 
 
 def get_foo():

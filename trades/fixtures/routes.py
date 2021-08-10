@@ -52,11 +52,10 @@ async def trades_data():
             usermod_list = await UserMod.filter(is_verified=True).only('id', 'currency')
             equity_list = await Equity.all().only('id')
             
-            brokers = []
-            brokers.append(await Broker.get(name='COL FINANCIAL GROUP, INC.').only('id'))
-            brokers.append(await Broker.get(name='UNITED PACIFIC SECURITIES').only('id'))
-            brokers.append(await Broker.get(name='CITICORP SECURITIES (RP)').only('id'))
-            
+            brokers = [await Broker.get(name='COL FINANCIAL GROUP, INC.').only('id'),
+                       await Broker.get(name='UNITED PACIFIC SECURITIES').only('id'),
+                       await Broker.get(name='CITICORP SECURITIES (RP)').only('id')]
+
             # Marks
             expires = datetime.now(tz=pytz.UTC) + timedelta(days=2)
             for usermod in usermod_list:
@@ -67,21 +66,21 @@ async def trades_data():
                     ll.append(Mark(expires=expires, equity=equity, author=usermod))
                 await Mark.bulk_create(ll)
 
-            # Trades
-            for usermod in usermod_list:
-                trader = Trader(usermod)
-                await trader.add_broker(brokers)
-                await trader.set_primary(random.choice(brokers).id)
-
-                for _ in range(1, 50):
-                    equity = random.choice(equity_list)
-                    price = random.randint(100, 999) / 100
-                    shares = random.randint(100, 10_000)
-
-                    if random.choice([0, 1]):
-                        await trader.buy_stock(equity, shares, price)
-                    else:
-                        await trader.sell_stock(equity, shares, price)
+            # # Trades
+            # for usermod in usermod_list:
+            #     trader = Trader(usermod)
+            #     await trader.add_broker(brokers)
+            #     await trader.set_primary(random.choice(brokers).id)
+            #
+            #     for _ in range(1, 50):
+            #         equity = random.choice(equity_list)
+            #         price = random.randint(100, 999) / 100
+            #         shares = random.randint(100, 10_000)
+            #
+            #         if random.choice([0, 1]):
+            #             await trader.buy(equity, shares, price)
+            #         else:
+            #             await trader.sell(equity, shares, price)
 
         return 'SUCCESS: Trades data'
     except Exception as e:
