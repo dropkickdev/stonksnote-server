@@ -273,11 +273,11 @@ class Mark(DTMixin, SharedMixin, models.Model):
 #     meta = fl.JSONField(null=True)
 
 
-class Demo(models.Model):
-    deleted_at = fl.DatetimeField(null=True)
-    
-    og = Manager()
-    
-    class Meta:
-        table = 'demo'
-        manager = CuratorManager()
+# class Demo(models.Model):
+#     deleted_at = fl.DatetimeField(null=True)
+#
+#     og = Manager()
+#
+#     class Meta:
+#         table = 'demo'
+#         manager = CuratorManager()

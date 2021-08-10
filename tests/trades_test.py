@@ -7,7 +7,7 @@ from tortoise.query_utils import Q
 
 from app import ic
 from app.auth import UserMod, Option
-from trades import Trade, Trader, Broker, UserBrokers, Stash, Mark, Equity, Demo
+from trades import Trade, Trader, Broker, UserBrokers, Stash, Mark, Equity
 from trades.fixtures.routes import trades_init, trades_data
 from tests.app.data import VERIFIED_EMAIL_DEMO
 
@@ -238,57 +238,57 @@ def test_wallet(loop, tempdb, trades_fx):
     pass
 
 
-# @pytest.mark.focus
-def test_querynull(loop, db):
-    async def ab():
-        # await Demox.create(deleted_at=None)
-        # await Demox.create(deleted_at=None)
-        # x = await Demox.create(deleted_at=None)
-        # # ic(type(x), x, vars(x))
-        # await x.soft_delete()
-        # await Demox.create(deleted_at=None)
-        # x = await Demox.create(deleted_at=None)
-        # await x.soft_delete()
-        
-        # await Demo.bulk_create([
-        #     Demo(deleted_at=None),
-        #     Demo(deleted_at=None),
-        #     Demo(deleted_at=datetime.utcnow()),
-        #     Demo(deleted_at=None),
-        #     Demo(deleted_at=datetime.now(tz=pytz.UTC)),
-        # ])
-        
-        # y = await Demo.og.all().values_list('deleted_at', flat=True)
-        # ic(y)
-        # x = Demo.og.filter(deleted_at__isnull=True).count()
-        # ic(x.sql())
-        # ic(await x)
-        # x = Demo.og.filter(deleted_at__not_isnull=True).count()
-        # ic(x.sql())
-        # ic(await x)
-        # x = Demo.og.filter(deleted_at__isnull=False).count()
-        # ic(x.sql())
-        # ic(await x)
-        # x = Demo.og.filter(~Q(deleted_at__isnull=True)).count()
-        # ic(x.sql())
-        # ic(await x)
-        # x = Demo.og.filter(Q(deleted_at__isnull=False)).count()
-        # ic(x.sql())
-        # ic(await x)
-
-        # conn = Tortoise.get_connection('default')
-        # count = await conn.execute_query_dict(
-        #     'SELECT COUNT(*) count FROM demo WHERE deleted_at IS NOT NULL'            # noqa
-        # )
-        # ic(count)
-        
-        # x = await Option.all().count()
-        # ic(x)
-        # x = await Option.og.all().count()
-        # ic(x)
-        
-        # ic('foo')
-        pass
-    
-    loop.run_until_complete(ab())
+# # @pytest.mark.focus
+# def test_querynull(loop, db):
+#     async def ab():
+#         # await Demox.create(deleted_at=None)
+#         # await Demox.create(deleted_at=None)
+#         # x = await Demox.create(deleted_at=None)
+#         # # ic(type(x), x, vars(x))
+#         # await x.soft_delete()
+#         # await Demox.create(deleted_at=None)
+#         # x = await Demox.create(deleted_at=None)
+#         # await x.soft_delete()
+#
+#         # await Demo.bulk_create([
+#         #     Demo(deleted_at=None),
+#         #     Demo(deleted_at=None),
+#         #     Demo(deleted_at=datetime.utcnow()),
+#         #     Demo(deleted_at=None),
+#         #     Demo(deleted_at=datetime.now(tz=pytz.UTC)),
+#         # ])
+#
+#         # y = await Demo.og.all().values_list('deleted_at', flat=True)
+#         # ic(y)
+#         # x = Demo.og.filter(deleted_at__isnull=True).count()
+#         # ic(x.sql())
+#         # ic(await x)
+#         # x = Demo.og.filter(deleted_at__not_isnull=True).count()
+#         # ic(x.sql())
+#         # ic(await x)
+#         # x = Demo.og.filter(deleted_at__isnull=False).count()
+#         # ic(x.sql())
+#         # ic(await x)
+#         # x = Demo.og.filter(~Q(deleted_at__isnull=True)).count()
+#         # ic(x.sql())
+#         # ic(await x)
+#         # x = Demo.og.filter(Q(deleted_at__isnull=False)).count()
+#         # ic(x.sql())
+#         # ic(await x)
+#
+#         # conn = Tortoise.get_connection('default')
+#         # count = await conn.execute_query_dict(
+#         #     'SELECT COUNT(*) count FROM demo WHERE deleted_at IS NOT NULL'            # noqa
+#         # )
+#         # ic(count)
+#
+#         # x = await Option.all().count()
+#         # ic(x)
+#         # x = await Option.og.all().count()
+#         # ic(x)
+#
+#         # ic('foo')
+#         pass
+#
+#     loop.run_until_complete(ab())
     
