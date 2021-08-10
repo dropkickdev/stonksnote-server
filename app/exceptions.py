@@ -69,3 +69,8 @@ class AppError(BaseAppError):
 class MissingBrokersError(BaseAppError):
     """All other errors"""
     message = 'YOU HAVE NO BROKERS IN YOUR ACCOUNT'
+
+
+class NotEnoughFundsError(BaseAppError):
+    """All other errors"""
+    message = "YOU DON'T HAVE ENOUGH FUNDS IN YOUR WALLET"
