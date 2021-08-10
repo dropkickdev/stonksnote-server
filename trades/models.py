@@ -1,14 +1,9 @@
-from datetime import datetime
-from typing import Optional, List
-from decimal import Decimal
 from tortoise import models, fields as fl
 from tortoise.manager import Manager
 from tortoise.fields import (
     ForeignKeyRelation as FKRel, ManyToManyRelation as M2MRel, ReverseRelation as RRel,
     ForeignKeyField as FKField, ManyToManyField as M2MField
 )
-from tortoise.queryset import Prefetch
-from tortoise.transactions import in_transaction
 from limeutils import modstr, setup_pagination
 
 from app import ic
@@ -41,7 +36,6 @@ class Broker(DTMixin, SharedMixin, models.Model):
 
     broker_users: M2MRel['UserMod']
     userbrokers: RRel['UserBrokers']
-    trades: RRel['Trade']
     
     og = Manager()
     
@@ -68,6 +62,9 @@ class UserBrokers(DTMixin, SharedMixin, models.Model):
     is_primary = fl.BooleanField(default=False)
     meta = fl.JSONField(null=True)
 
+    stash: RRel['Stash']
+    trades: RRel['Trade']
+
     og = Manager()
     
     class Meta:
@@ -77,22 +74,30 @@ class UserBrokers(DTMixin, SharedMixin, models.Model):
     def __str__(self):
         return modstr(self, 'broker')
 
-    # TESTME: Untested: ready
-    async def reset_wallet(self, amount: float = 0, save_now: bool = False):
-        self.wallet = amount
-        await self.save(update_fields=['wallet'])
+    async def deposit(self, amount: float) -> float:
+        """
+        Add to your wallet
+        :param amount:      The amount to add to the wallet
+        :return:            float New value of the wallet
+        """
+        if amount:
+            self.wallet += amount
+            await self.save(update_fields=['wallet'])
+        return self.wallet
 
-    # TESTME: Untested: ready
-    async def incr_wallet(self, gross: float):
-        self.wallet += gross
-        await self.save(update_fields=['wallet'])
-
-    # TESTME: Untested: ready
-    async def decr_wallet(self, gross: float):
-        # TODO: Doesn't check if you have enough funds
-        self.wallet -= gross
-        # self.wallet = 0 if self.wallet < 0 else self.wallet
-        await self.save(update_fields=['wallet'])
+    async def withdraw(self, amount: float) -> float:
+        """
+        Deduct from your wallet
+        :param amount:      The amount to deduct from the wallet
+        :return:            float New value of the wallet
+        """
+        if amount:
+            self.wallet -= amount
+            # TODO: Check options for negative wallet
+            if self.wallet < 0:
+                self.wallet = 0
+            await self.save(update_fields=['wallet'])
+        return self.wallet
 
 
 class Owner(DTMixin, SharedMixin, models.Model):
@@ -131,7 +136,6 @@ class Equity(DTMixin, SharedMixin, models.Model):
     author: FKRel['UserMod'] = FKField('models.UserMod', related_name='author_equity')
 
     equity_collections: M2MRel['Collection']
-    stash: RRel['Stash']
     equity_marks: RRel['Mark']
 
     og = Manager()
@@ -168,7 +172,7 @@ class Collection(DTMixin, SharedMixin, models.Model):
 
 class Trade(DTMixin, SharedMixin, models.Model):
     stash: FKRel['Stash'] = FKField('models.Stash', related_name='trades')
-    broker: FKRel['Broker'] = FKField('models.Broker', related_name='trades')
+    userbroker: FKRel['UserBrokers'] = FKField('models.UserBrokers', related_name='trades')
 
     action = fl.SmallIntField()    # ActionChoices
     price = fl.DecimalField(max_digits=12, decimal_places=4)
@@ -201,10 +205,23 @@ class Trade(DTMixin, SharedMixin, models.Model):
     def __str__(self):
         return modstr(self, 'stash__equity')
     
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.stash = kwargs.get('stash')
+        self.userbroker = kwargs.get('userbroker')
+        self.action = kwargs.get('action')
+        self.author = kwargs.get('author')
+        self.price = kwargs.get('price')
+        self.shares = kwargs.get('shares')
+        self.gross = kwargs.get('gross')
+        self.fees = kwargs.get('fees')
+        self.total = kwargs.get('total')
+        self.currency = kwargs.get('currency')
+    
 
 class Stash(DTMixin, SharedMixin, models.Model):
     user: FKRel['UserMod'] = FKField('models.UserMod', related_name='user_stash')
-    equity: FKRel[Equity] = FKField('models.Equity', related_name='stash')
+    userbroker: FKRel[UserBrokers] = FKField('models.UserBrokers', related_name='stash')
     shares = fl.IntField(default=0)
 
     is_resolved = fl.BooleanField(default=True, index=True)
@@ -223,21 +240,24 @@ class Stash(DTMixin, SharedMixin, models.Model):
         return modstr(self, 'equity')
 
     # TESTME: Untested ready
-    async def incr_stash(self, shares: int):
+    async def deposit(self, shares: int):
         self.shares += shares
         await self.save(update_fields=['shares'])
-        
+        return self.shares
 
     # TESTME: Untested ready
-    async def decr_stash(self, shares: int):
+    async def withdraw(self, shares: int):
         self.shares -= shares
+        if self.shares < 0:
+            self.shares = 0
         await self.save(update_fields=['shares'])
+        return self.shares
 
 
 class Mark(DTMixin, SharedMixin, models.Model):
     equity: FKRel[Equity] = FKField('models.Equity', related_name='equity_marks')
     title: FKRel['Taxonomy'] = FKField('models.Taxonomy', related_name='title_marks', null=True)
-    expires = fl.DateField(null=True)
+    expires = fl.DateField(null=True)   # Not in use
     
     is_active = fl.BooleanField(default=True)
     meta = fl.JSONField(null=True)

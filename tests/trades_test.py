@@ -1,14 +1,10 @@
-import pytest, random, pytz
+import pytest, random
 from limeutils import listify
 from collections import Counter
-from datetime import datetime
-from tortoise import Tortoise
-from tortoise.query_utils import Q
 
 from app import ic
 from app.auth import UserMod, Option
-from trades import Trade, Trader, Broker, UserBrokers, Stash, Mark, Equity
-from trades.fixtures.routes import trades_init, trades_data
+from trades import Trade, Trader, Broker, UserBrokers, Mark, Equity
 from tests.app.data import VERIFIED_EMAIL_DEMO
 
 
@@ -29,7 +25,7 @@ def test_add_broker(loop, tempdb, trades_fx):
             b1, b2, b3, b4, *_ = broker_list
     
             assert not await trader.has_primary()
-            assert not await trader.has_brokers()
+            assert not await trader.has_userbrokers()
             assert await trader.get_primary() is None
             assert await trader.get_userbrokers() == []
             
@@ -51,7 +47,7 @@ def test_add_broker(loop, tempdb, trades_fx):
                     assert i.user_id == usermod.id                                          # noqa
     
             assert not await trader.has_primary()
-            assert await trader.has_brokers()
+            assert await trader.has_userbrokers()
             assert not await trader.get_primary()
 
     loop.run_until_complete(ab())
@@ -70,7 +66,7 @@ def test_remove_broker(loop, tempdb, trades_fx):
             await trader.add_broker(broker_list)
             
             assert not await trader.has_primary()
-            assert await trader.has_brokers()
+            assert await trader.has_userbrokers()
             assert len(broker_list) == 9
             
             param = [
@@ -90,7 +86,7 @@ def test_remove_broker(loop, tempdb, trades_fx):
                     assert not removed_ids <= remaining_ids
     
             assert not await trader.has_primary()
-            assert not await trader.has_brokers()
+            assert not await trader.has_userbrokers()
             assert not await trader.get_primary()
             
     loop.run_until_complete(ab())
@@ -141,7 +137,7 @@ def test_brokers_and_primary(loop, tempdb, trades_fx):
         for usermod in usermod_list:
             trader = Trader(usermod)
             
-            assert not await trader.has_brokers()
+            assert not await trader.has_userbrokers()
             assert not await trader.has_primary()
             assert not await trader.get_primary()
             assert len(await trader.get_userbrokers()) == 0
@@ -158,19 +154,19 @@ def test_brokers_and_primary(loop, tempdb, trades_fx):
                     userbroker = await trader.get_primary()
                     assert isinstance(userbroker, UserBrokers)
                     assert userbroker.is_primary
-                    assert userbroker.user_id == usermod.id
-                    assert userbroker.broker_id == primary.id
+                    assert userbroker.user_id == usermod.id                                 # noqa
+                    assert userbroker.broker_id == primary.id                               # noqa
                     
                 if unsetpr:
                     await trader.unset_primary()
                     assert await trader.get_primary() == primary
                     
-                assert await trader.has_brokers() == bool(all_brokers)
+                assert await trader.has_userbrokers() == bool(all_brokers)
                 assert await trader.has_primary() == bool(primary)
                 
                 if userbroker_list := await trader.get_userbrokers():
                     all_ids = {i.id for i in all_brokers}
-                    getbrokers_ids = {i.broker_id for i in await trader.get_userbrokers()}
+                    getbrokers_ids = {i.broker_id for i in await trader.get_userbrokers()}  # noqa
                     assert Counter(all_ids) == Counter(getbrokers_ids)
                     assert len(userbroker_list) == len(all_brokers)
 
@@ -178,52 +174,52 @@ def test_brokers_and_primary(loop, tempdb, trades_fx):
     
     
 # @pytest.mark.focus
-def test_marks(loop, tempdb, trades_fx):
-    async def ab():
-        await tempdb()
-        await trades_fx()
-
-        usermod_list = await UserMod.filter(is_verified=True).order_by('created_at').limit(1)
-        equity_list = await Equity.all().only('id')
-        e1, e2, e3, e4, *_ = equity_list
-        
-        for usermod in usermod_list:
-            trader = Trader(usermod)
-            active_equities = []
-            
-            count = await Mark.filter(author=usermod).count()
-            assert count == 0
-            
-            param = [
-                (e1.id, None, 1), (e1.id, None, 1), ([e2.id, e3.id], None, 3),
-                ([e1.id, e4.id], None, 4), (None, None, 0),
-                ([e1.id], [], 1), ([e1.id, e2.id], e1.id, 1),
-                (None, [e2.id], 0), ([e1.id, e2.id, e3.id], [], 3),
-                ([], e3.id, 2), (None, [e1.id, e2.id, e3.id, e4.id], 0),
-            ]
-            for addlist, removelist, count in param:
-                
-                if not addlist and not removelist and not count:
-                    await trader.clear_marks()
-                    active_equities = []
-                else:
-                    await trader.add_mark(addlist)
-                    if addlist:
-                        active_equities.extend(listify(addlist))
-                        
-                    await trader.remove_mark(removelist)
-                    if removelist:
-                        active_equities = list(set(active_equities) - set(listify(removelist)))
-                        
-                    active_equities = list(set(active_equities))
-                    
-                assert len(await trader.get_marks()) == count
-                
-                allmarks = await Mark.filter(author=usermod, is_active=True)\
-                                     .values_list('equity_id', flat=True)
-                assert Counter(allmarks) == Counter(active_equities)
-        
-    loop.run_until_complete(ab())
+# def test_marks(loop, tempdb, trades_fx):
+#     async def ab():
+#         await tempdb()
+#         await trades_fx()
+#
+#         usermod_list = await UserMod.filter(is_verified=True).order_by('created_at').limit(1)
+#         equity_list = await Equity.all().only('id')
+#         e1, e2, e3, e4, *_ = equity_list
+#
+#         for usermod in usermod_list:
+#             trader = Trader(usermod)
+#             active_equities = []
+#
+#             count = await Mark.filter(author=usermod).count()
+#             assert count == 0
+#
+#             param = [
+#                 (e1.id, None, 1), (e1.id, None, 1), ([e2.id, e3.id], None, 3),
+#                 ([e1.id, e4.id], None, 4), (None, None, 0),
+#                 ([e1.id], [], 1), ([e1.id, e2.id], e1.id, 1),
+#                 (None, [e2.id], 0), ([e1.id, e2.id, e3.id], [], 3),
+#                 ([], e3.id, 2), (None, [e1.id, e2.id, e3.id, e4.id], 0),
+#             ]
+#             for addlist, removelist, count in param:
+#
+#                 if not addlist and not removelist and not count:
+#                     await trader.toggle_mark()
+#                     active_equities = []
+#                 else:
+#                     await trader.add_mark(addlist)
+#                     if addlist:
+#                         active_equities.extend(listify(addlist))
+#
+#                     await trader.disable_mark(removelist)
+#                     if removelist:
+#                         active_equities = list(set(active_equities) - set(listify(removelist)))
+#
+#                     active_equities = list(set(active_equities))
+#
+#                 assert len(await trader.get_marks()) == count
+#
+#                 allmarks = await Mark.filter(author=usermod, is_active=True)\
+#                                      .values_list('equity_id', flat=True)
+#                 assert Counter(allmarks) == Counter(active_equities)
+#
+#     loop.run_until_complete(ab())
 
 
 @pytest.mark.focus
@@ -250,31 +246,33 @@ def test_trades(loop, tempdb, trades_fx):
             for addbrokers, account1, account2 in param:
                 dep1, dep2, with1, wallet1 = account1
                 dep3, with2, wallet2 = account2
-                
+
                 if addbrokers:
                     await trader.add_broker(addbrokers[:2])
                     await trader.add_broker(addbrokers[2])
-                    
+
                 ub1, ub2, ub3 = await trader.get_userbrokers()
                 await trader.set_primary(ub2.broker_id)
                 userbroker = await trader.get_userbroker()
-                assert userbroker.broker_id == ub2.broker_id
-                
-                await trader.deposit(dep1)
-                await trader.deposit(dep2)
-                total = await trader.withdraw(with1)
+                assert userbroker.broker_id == ub2.broker_id                                # noqa
+
+                await trader.deposit_wallet(dep1)
+                await trader.deposit_wallet(dep2)
+                total = await trader.withdraw_wallet(with1)
                 assert total == float(wallet1)
-                
-                await trader.deposit(dep3, ub3.broker_id)
-                total = await trader.withdraw(with2, ub3.broker_id)
+
+                await trader.deposit_wallet(dep3, ub3.broker_id)
+                total = await trader.withdraw_wallet(with2, ub3.broker_id)
                 assert total == float(wallet2)
-                
+
                 assert await trader.get_wallet(ub1.broker_id) == float(0)
                 assert await trader.get_wallet() == float(wallet1)
                 assert await trader.get_wallet(ub3.broker_id) == float(wallet2)
 
-            # for equity, ecount, addshares, removeshares, totalshares in param:
-            #     pass
+            # Buy shares here
+            param = []
+            for x in param:
+                pass
         
     loop.run_until_complete(ab())
         

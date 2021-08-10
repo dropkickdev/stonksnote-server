@@ -1,36 +1,39 @@
 import pytz
-from decimal import Decimal
 from datetime import datetime
 from typing import Optional, Tuple, Union, List
-from tortoise.query_utils import Prefetch, Q
-from tortoise.queryset import QuerySet, QuerySetSingle
+from tortoise.queryset import QuerySet, QuerySetSingle, Prefetch
 from tortoise.transactions import in_transaction
-from pydantic import UUID4, BaseModel, validate_arguments
 from limeutils import listify
 
 from .models import *
 from .choices import *
 from .resource import *
 from app import ic, exceptions as x
-from app.settings import settings as s
 from app.auth import UserMod
 
 
 
 broker_fields = ('id', 'name', 'short', 'brokerno', 'rating', 'logo', 'currency', 'buyfees', 'sellfees')
+userbroker_fields = ('id', 'user_id', 'broker_id', 'wallet', 'is_primary', 'status')
+stash_fields = ('id', 'user_id', 'userbroker_id', 'shares', 'is_resolved')
+mark_fields = ('id', 'equity_id', 'is_active')
 
 class Trader:
     usermod: UserMod
     broker: Broker
     broker_list: list
     
-    
     def __init__(self, usermod: UserMod):
         self.usermod = usermod
         self.currency = self.usermod.currency
 
-
-    def cleanup_ublist(self, ublist: Union[UserBrokers, List[UserBrokers]]):
+    @staticmethod
+    def cleanup_ublist(ublist: Union[UserBrokers, List[UserBrokers]]) -> List[UserBrokers]:
+        """
+        Cleans up the data for a UserBrokers instance
+        :param ublist:  List of UserBrokers
+        :return:        List[UserBrokers]
+        """
         ublist = listify(ublist)
         for idx, i in enumerate(ublist):
             ublist[idx].name = i.broker.name                                       # noqa
@@ -44,88 +47,104 @@ class Trader:
             ublist[idx].wallet = float(i.wallet)                                   # noqa
         return ublist
 
-
-    async def has_primary(self):
+    async def has_primary(self) -> bool:
+        """
+        Checks if the trader has a primary UserBroker
+        :return:    bool
+        """
         return await UserBrokers.exists(user=self.usermod, is_primary=True)
 
-    async def has_brokers(self):
+    async def has_userbrokers(self) -> bool:
+        """
+        Checks if the trader has any UserBrokers
+        :return:    bool
+        """
         return await UserBrokers.exists(user=self.usermod)
 
-    async def get_primary(self, *, as_dict: bool = False):
+    async def get_primary(self, *, as_dict: bool = False) -> Union[UserBrokers, dict, None]:
         """
-        Get the primary broker
+        Return an the primary UserBrokers
         :param as_dict: Return dict or instance
-        :return:            list or None
+        :return:        Union[UserBrokers, dict, None]
         """
         if not await self.has_primary():
             return
-        
         query = UserBrokers.get_or_none(user=self.usermod, is_primary=True)
-        userbroker = (await self._query_userbroker(query, as_dict))[0]
+        userbroker = (await self._query_userbroker(query, as_dict=as_dict))[0]
         return userbroker
 
-    async def find_userbroker(self, broker_id: int, *, as_dict: bool = False):
+    async def find_userbroker(self, broker_id: int, *, as_dict: bool = False) -> Union[UserBrokers, dict, None]:
         """
-        Get any of your brokers
+        Return an instance of UserBrokers based on a Broker id
         :param broker_id:   Broker id
         :param as_dict:     Return dict or instance
-        :return:            list or None
+        :return:            Union[UserBrokers, dict, None]
         """
-        if not await self.has_brokers():
+        if not await self.has_userbrokers():
             return
-        
         query = UserBrokers.get_or_none(user=self.usermod, broker_id=broker_id)
-        userbroker = (await self._query_userbroker(query, as_dict))[0]
+        userbroker = (await self._query_userbroker(query, as_dict=as_dict))[0]
         return userbroker
 
-    async def get_userbrokers(self, as_dict: bool = False) -> List[Union[UserBrokers, dict]]:
+    async def get_userbrokers(self, *, as_dict: bool = False) -> Union[list, List[Union[UserBrokers, dict]]]:
         """
         Get the brokers of a user
         :param as_dict: Return dict or instance
-        :return:            list of UserBrokers/dict
+        :return:        Union[list, List[Union[UserBrokers, dict]]]
         """
-        if not await self.has_brokers():
+        if not await self.has_userbrokers():
             return []
     
         query = UserBrokers.filter(user=self.usermod)
         return await self._query_userbroker(query, as_dict=as_dict)
 
-    async def _query_userbroker(self, query: QuerySetSingle, as_dict: bool) -> list:
+    async def _query_userbroker(self, query: QuerySetSingle, *, as_dict: bool) -> List[Union[UserBrokers, dict]]:
         """
-        Consolidated
+        Return a list of UserBrokers in instance or dict format
         :param query:       Starting query
-        :param as_dict: Return dict or instance
-        :return:            List[Union[dict, UserBrokers]]
+        :param as_dict:     Return dict or instance
+        :return:            List[Union[UserBrokers, dict]]
         """
-        fields = ('id', 'broker_id', 'is_primary', 'wallet', 'user_id')
-        
         if as_dict:
             dict_fields = {i: f'broker__{i}' for i in broker_fields if i != 'id'}
-            return await query.values(*fields, **dict_fields)
+            return await query.values(*userbroker_fields, **dict_fields)
     
         query = query.prefetch_related(
             Prefetch('broker', Broker.all().only(*broker_fields), to_attr='broker'),
-        ).only(*fields)
+        ).only(*userbroker_fields)
         ublist = await query
     
         # Cleanup and return
         return self.cleanup_ublist(ublist)
 
-    async def get_userbroker(self, broker_id: Optional[int] = None):
+    async def get_userbroker(self, broker_id: Optional[int] = None) -> UserBrokers:
+        """
+        Get the assigned UserBroker based on a Broker id. If no Broker id is supplied then the
+        primary UserBrokers is returned. If there is no assigned primary (but user has
+        UserBrokers) the first UserBrokers wil be made into the primary and returned.
+        :param broker_id:   Broker id
+        :return:            UserBrokers instance
+        """
         if broker_id:
-            return await self.find_userbroker(broker_id)
-        return await self.get_primary()
+            return await self.find_userbroker(broker_id)                                    # noqa
+        if await self.has_primary():
+            return await self.get_primary()                                                 # noqa
+        if await self.has_userbrokers():
+            userbroker = (await self.get_userbrokers())[0]
+            await self.set_primary(userbroker.broker_id)                                    # noqa
+            return userbroker
+        raise x.MissingBrokersError()
     
-    async def set_primary(self, id: int) -> None:
+    async def set_primary(self, broker_id: int) -> None:
         """
         Set a new primary broker for this user
-        :param id:  Broker id
-        :return:    None
+        :param broker_id:   Broker id
+        :return:            None
         """
         async with in_transaction():
             if ub := await UserBrokers.filter(user=self.usermod).only('id', 'broker_id', 'is_primary'):
                 for i in ub:
-                    if i.broker_id == id:                                       # noqa
+                    if i.broker_id == broker_id:                                       # noqa
                         i.is_primary = True
                         await i.save(update_fields=['is_primary'])
                     elif i.is_primary:
@@ -165,98 +184,64 @@ class Trader:
         
         await self.usermod.brokers.add(*broker_list)
         
-    async def get_wallet(self, broker_id: Optional[int] = None) -> float:
-        userbroker = await self.get_userbroker(broker_id)
-        return userbroker.wallet
     
-    async def deposit(self, amount: float, broker_id: Optional[int] = None) -> float:
-        """
-        Deposit to a UserBroker
-        :param amount:      Amount to deposit
-        :param broker_id:   Broker id
-        :return:            New wallet amount
-        """
+    # TESTME: Untested
+    async def buy(self, equity_id: int, shares: int, price: float,
+                  broker_id: Optional[int] = None, currency: Optional[str] = None):
         userbroker = await self.get_userbroker(broker_id)
-        if amount:
-            userbroker.wallet += amount
-            await userbroker.save(update_fields=['wallet'])
-        return userbroker.wallet
-
-    async def withdraw(self, amount: float, broker_id: Optional[int] = None) -> float:
-        userbroker = await self.get_userbroker(broker_id)
-        if amount:
-            userbroker.wallet -= amount
-            if userbroker.wallet < 0:
-                userbroker.wallet = 0
-            await userbroker.save(update_fields=['wallet'])
-        return userbroker.wallet
-
-    # TESTME: Untested ready
-    async def buy(self, equity: Equity, shares: int, price: float,
-                  broker: Optional[Broker] = None, currency: Optional[str] = None):
-        if not broker:
-            if await self.has_primary():
-                broker = await self.get_primary()
-            else:
-                if await self.has_brokers():
-                    ub = await UserBrokers.filter(user=self.usermod).first().values('id')
-                    broker = await self.find_userbroker(ub['id'])
-                    await self.set_primary(broker.id)
-                else:
-                    raise x.MissingBrokersError()
-
-        # ic(vars(broker))
         gross = price * shares
-        fees = gross * broker.buyfees
+        fees = gross * userbroker.buyfees                                                   # noqa
         total = gross + fees
-        currency = currency or broker.currency
+        currency = currency or userbroker.currency                                          # noqa
 
         async with in_transaction():
-            stash = await self.get_stash(equity)
-            if not stash:
-                stash = await Stash.create(user=self.usermod, equity=equity,
-                                           author=self.usermod)
-    
-            await stash.incr_stash(shares)
-            await broker.ubs.decr_wallet(total)
-            await Trade.create(stash=stash, broker=broker, action=1, author=self.usermod,
-                               price=price, shares=shares, gross=gross, fees=fees, total=total,
-                               currency=currency)
-            return gross, fees, total, currency
+            stash = await self.get_stash(equity_id) or await self.add_stash(equity_id)
+            if total <= await self.get_wallet(userbroker.broker_id):                        # noqa
+                await userbroker.withdraw(total)
+                await stash.deposit(shares)
+                await Trade.create(
+                    stash=stash, userbroker=userbroker, action=1, author=self.usermod,
+                    price=price, shares=shares, gross=gross, fees=fees, total=total,
+                    currency=currency
+                )
+                return gross, fees, total, currency
+            raise x.NotEnoughFundsError()
+        
 
     # TESTME: Untested
     async def sell(self, equity: Equity, shares: int, price: float,
                    broker: Optional[Broker] = None, currency: Optional[str] = None):
-        if not broker:
-            if await self.has_primary():
-                broker = await self.get_primary()
-            else:
-                if await self.has_brokers():
-                    ub = await UserBrokers.filter(user=self.usermod).first().values('id')
-                    broker = await self.find_userbroker(ub['id'])
-                    await self.set_primary(broker.id)
-                else:
-                    raise x.MissingBrokersError()
-
-        # ic(vars(broker))
-        gross = price * shares
-        fees = gross * broker.sellfees
-        total = gross - fees
-        currency = currency or broker.currency
-
-        async with in_transaction():
-            stash = await self.get_stash(equity)
-            if not stash:
-                stash = await Stash.create(user=self.usermod, equity=equity,
-                                           author=self.usermod)
-            # ic(type(stash), vars(stash))
-    
-            await stash.decr_stash(shares)
-            await broker.ubs.incr_wallet(total)
-            await Trade.create(stash=stash, broker=broker, action=2, author=self.usermod,
-                               price=price, shares=shares, gross=gross, fees=fees, total=total,
-                               currency=currency)
-            return gross, fees, total, currency
+        # if not broker:
+        #     if await self.has_primary():
+        #         broker = await self.get_primary()
+        #     else:
+        #         if await self.has_userbrokers():
+        #             ub = await UserBrokers.filter(user=self.usermod).first().values('id')
+        #             broker = await self.find_userbroker(ub['id'])
+        #             await self.set_primary(broker.id)
+        #         else:
+        #             raise x.MissingBrokersError()
+        #
+        # # ic(vars(broker))
+        # gross = price * shares
+        # fees = gross * broker.sellfees
+        # total = gross - fees
+        # currency = currency or broker.currency
+        #
+        # async with in_transaction():
+        #     stash = await self.get_stash(equity)
+        #     if not stash:
+        #         stash = await Stash.create(user=self.usermod, equity=equity,
+        #                                    author=self.usermod)
+        #     # ic(type(stash), vars(stash))
+        #
+        #     await stash.withdraw(shares)
+        #     await broker.ubs.incr_wallet(total)
+        #     await Trade.create(stash=stash, broker=broker, action=2, author=self.usermod,
+        #                        price=price, shares=shares, gross=gross, fees=fees, total=total,
+        #                        currency=currency)
+        #     return gross, fees, total, currency
+        pass
 
     
     
@@ -272,56 +257,133 @@ class Trader:
         await self.usermod.brokers.remove(*broker)
 
     # TESTME: Untested
-    async def add_stash(self, equity: Equity, **kwargs):
-        pass
+    async def add_stash(self, equity_id: int):
+        if equity := await Equity.get_or_none(pk=equity_id).only('id'):
+            return await Stash.create(user=self.usermod, equity=equity, author=self.usermod)
     
     # TESTME: Untested ready
-    async def has_stash(self, equity: Equity):
-        return await Stash.exists(user=self.usermod, equity=equity)
+    async def has_stash(self, equity_id: int):
+        return await Stash.exists(user=self.usermod, equity_id=equity_id)
     
     # TESTME: Untested: ready
-    async def get_stash(self, equity: Equity, *, as_dict: bool = False):
-        fields = ('id', 'shares', 'is_resolved', 'updated_at')
-        query = Stash.get_or_none(user=self.usermod, equity=equity)
+    async def get_stash(self, equity_id: int, *, as_dict: bool = False):
+        query = Stash.get_or_none(user=self.usermod, equity_id=equity_id)
         if as_dict:
-            return await query.prefetch_related(
-                Prefetch('equity', Equity.all().only('id', 'ticker', 'category', 'status'),
-                         to_attr='equity')
-            ).only(*fields, 'equity_id')
-        return (await query.values(*fields, equity='equity__ticker', equity_id='equity__id',
-                                  category='equity__category', status='equity__status'))[0]
+            return (await query.values(
+                *stash_fields,
+                equity='equity__ticker', category='equity__category',
+                status='equity__status'
+            ))[0]
+        return await query.prefetch_related(
+            Prefetch('equity', Equity.all().only('id', 'ticker', 'category', 'status'),
+                     to_attr='equity')
+        ).only(*stash_fields, 'equity_id')
+    
+    # TESTME: Untestedh
+    @staticmethod
+    async def deposit_shares(shares: int, stash: Stash):
+        return await stash.deposit(shares)
+
+    # TESTME: Untested
+    @staticmethod
+    async def withdraw_shares(shares: int, stash: Stash):
+        return await stash.withdraw(shares)
+    
+    async def deposit_wallet(self, amount: float, broker_id: Optional[int] = None) -> float:
+        """
+        Add to your wallet
+        :param amount:      The amount to add to the wallet
+        :param broker_id:   The Broker to add to
+        :return:            float New value of the wallet
+        """
+        userbroker = await self.get_userbroker(broker_id)
+        return await userbroker.deposit(amount)
+
+    async def withdraw_wallet(self, amount: float, broker_id: Optional[int] = None) -> float:
+        """
+        Deduct from your wallet
+        :param amount:      The amount to deduct from the wallet
+        :param broker_id:   The Broker to deduct from
+        :return:            float New value of the wallet
+        """
+        userbroker = await self.get_userbroker(broker_id)
+        return await userbroker.withdraw(amount)
+
+    async def get_wallet(self, broker_id: Optional[int] = None) -> float:
+        """
+        Get the current value of a wallet
+        :param broker_id:   Broker id
+        :return:            float Wallet amount
+        """
+        userbroker = await self.get_userbroker(broker_id)
+        return userbroker.wallet
     
     
-    
-    
-    
-    async def add_mark(self, idlist: Union[int, List[int]], expires: Optional[datetime] = None,
-                       is_active: bool = True):
-        idlist = listify(idlist)
-        if equity_list := await Equity.filter(pk__in=idlist).only('id'):
-            # equity_idlist = [i.id for i in equity_list]
-            if existing := await Mark.filter(author=self.usermod, is_active=True)\
-                                     .values_list('equity_id', flat=True):
-                equity_list = list(filter(lambda x: x.id not in existing, equity_list))
-            ll = []
-            for equity in equity_list:
-                ll.append(Mark(expires=expires, equity=equity, author=self.usermod,
-                               is_active=is_active))
-            if ll:
-                await Mark.bulk_create(ll)
-    
-    async def clear_marks(self):
+    # TESTME: Untested
+    async def _toggle_mark(self, *, equityid_list: Optional[List[int]] = None) -> None:
+        """
+        Adding new Marks or clearing all Marks
+        :param equityid_list:   List of Equity ids
+        :return:                None
+        """
+        # Adding
+        if equityid_list:
+            if equity_list := await Equity.filter(pk__in=equityid_list).only('id'):
+                if existing := await Mark.filter(author=self.usermod, is_active=True) \
+                                         .values_list('equity_id', flat=True):
+                    equity_list = list(filter(lambda j: j.id not in existing, equity_list))
+                ll = []
+                for equity in equity_list:
+                    ll.append(Mark(equity=equity, author=self.usermod, is_active=True))
+                ll and await Mark.bulk_create(ll)
+                return
+            
+        # Resetting
         await Mark.filter(author=self.usermod, is_active=True).update(is_active=False)
-        
-    async def get_marks(self):
-        return await Mark.filter(author=self.usermod, is_active=True).only('id', 'equity_id')
+
+    # TESTME: Untested
+    async def add_mark(self, equity_id: Union[int, List[int]]) -> None:
+        """
+        Add a new Mark to your list of Marks
+        :param equity_id:   The Equity id you want to add
+        :return:            None
+        """
+        return await self._toggle_mark(equityid_list=listify(equity_id))
     
-    async def remove_mark(self, idlist: Union[int, List[int]]):
-        idlist = listify(idlist)
-        now = datetime.now(tz=pytz.UTC)
-        if idlist:
-            await Mark.filter(author=self.usermod, equity_id__in=idlist)\
-                      .update(deleted_at=now, is_active=False)
+    # TESTME: Untested
+    async def reset_marks(self) -> None:
+        """
+        Deactivate all your currently active Marks
+        :return:    None
+        """
+        return await self._toggle_mark()
+
+    # TESTME: Untested
+    async def remove_mark(self, mark_id: Union[int, List[int]]):
+        """
+        Hard-delete a mark
+        :param mark_id: The Mark id you want to delete from your list.
+        :return:        None
+        """
+        await Mark.filter(pk__in=listify(mark_id)).delete()
+
+    
+        
+    # # TESTME: Untested
+    # async def get_marks(self) -> list:
+    #     """
+    #     Get all of your active Marks
+    #     :return:    list
+    #     """
+    #     return await Mark.filter(author=self.usermod, is_active=True).only(*mark_fields)
+    #
+    # # TESTME: Untested
+    # async def disable_mark(self, equity_id: Union[int, List[int]]):
+    #     now = datetime.now(tz=pytz.UTC)
+    #     if equity_id:
+    #         equityid_list = listify(equity_id)
+    #         await Mark.filter(author=self.usermod, equity_id__in=equityid_list)\
+    #                   .update(deleted_at=now, is_active=False)
     
     
     

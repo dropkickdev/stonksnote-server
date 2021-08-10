@@ -56,16 +56,16 @@ async def trades_data():
                        await Broker.get(name='UNITED PACIFIC SECURITIES').only('id'),
                        await Broker.get(name='CITICORP SECURITIES (RP)').only('id')]
 
-            # Marks
-            expires = datetime.now(tz=pytz.UTC) + timedelta(days=2)
-            for usermod in usermod_list:
-                ll = []
-                for _ in range(random.randint(1, 30)):
-                    equity = random.choice(equity_list)
-                    # TODO: Duplicate Mark find a way to fix this unless it's really allawed
-                    ll.append(Mark(expires=expires, equity=equity, author=usermod))
-                await Mark.bulk_create(ll)
-
+            # # Marks
+            # expires = datetime.now(tz=pytz.UTC) + timedelta(days=2)
+            # for usermod in usermod_list:
+            #     ll = []
+            #     for _ in range(random.randint(1, 30)):
+            #         equity = random.choice(equity_list)
+            #         # TODO: Duplicate Mark find a way to fix this unless it's really allawed
+            #         ll.append(Mark(expires=expires, equity=equity, author=usermod))
+            #     await Mark.bulk_create(ll)
+            #
             # # Trades
             # for usermod in usermod_list:
             #     trader = Trader(usermod)
