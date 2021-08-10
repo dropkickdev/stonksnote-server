@@ -12,7 +12,7 @@ from limeutils import modstr
 
 from app.cache import red
 from app.settings import settings as s
-from app.authentication.models.manager import CuratorM
+from app.authentication.models.manager import CuratorManager
 
 
 class DTMixin(object):
@@ -52,11 +52,11 @@ class Option(SharedMixin, models.Model):
     deleted_at = fields.DatetimeField(null=True)
     updated_at = fields.DatetimeField(auto_now=True)
 
-    full = Manager()
+    og = Manager()
 
     class Meta:
         table = 'core_option'
-        manager = CuratorM()
+        manager = CuratorManager()
 
     def __str__(self):
         return modstr(self, 'name')
@@ -85,11 +85,11 @@ class Visitor(models.Model):
     updated_at = fields.DatetimeField(auto_now=True)
     created_at = fields.DatetimeField(auto_now_add=True)
 
-    full = Manager()
+    og = Manager()
 
     class Meta:
         table = 'core_visitor'
-        manager = CuratorM()
+        manager = CuratorManager()
 
     def __str__(self):
         return modstr(self, 'user')
@@ -115,12 +115,12 @@ class Taxonomy(DTMixin, SharedMixin, models.Model):
     stage_equity: RRel['Equity']
     title_marks: RRel['Mark']
     
-    full = Manager()
+    og = Manager()
 
     class Meta:
         table = 'core_taxonomy'
         unique_together = (('name', 'tier'),)
-        manager = CuratorM()
+        manager = CuratorManager()
 
     def __str__(self):
         return modstr(self, 'name')
@@ -179,11 +179,11 @@ class Token(DTMixin, SharedMixin, models.Model):
     is_blacklisted = fields.BooleanField(default=False)
     author: FKRel['UserMod'] = FKField('models.UserMod', related_name='author_tokens')
 
-    full = Manager()
+    og = Manager()
 
     class Meta:
         table = 'auth_token'
-        manager = CuratorM()
+        manager = CuratorManager()
 
     def __str__(self):
         return modstr(self, 'token')
@@ -204,11 +204,11 @@ class Media(DTMixin, SharedMixin, models.Model):
 
     logo_members: RRel['Owner']
     
-    full = Manager()
+    og = Manager()
     
     class Meta:
         table = 'core_media'
-        manager = CuratorM()
+        manager = CuratorManager()
     
     def __str__(self):
         return modstr(self, f'{self.filename}.{self.ext}')
@@ -222,11 +222,11 @@ class Note(DTMixin, SharedMixin, models.Model):
 
     note_trades: RRel['Trade']
     
-    full = Manager()
+    og = Manager()
     
     class Meta:
         table = 'core_note'
-        manager = CuratorM()
+        manager = CuratorManager()
     
     def __str__(self):
         split = self.note.split()

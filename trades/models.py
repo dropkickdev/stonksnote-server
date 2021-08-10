@@ -14,7 +14,7 @@ from limeutils import modstr, setup_pagination
 from app import ic
 from app.settings import settings as s
 from app.auth import UserDB, UserMod
-from app.authentication.models.manager import CuratorM
+from app.authentication.models.manager import CuratorManager
 from app.authentication.models.core import DTMixin, SharedMixin, Taxonomy, Note
 from .resource import TradeData
 
@@ -43,11 +43,11 @@ class Broker(DTMixin, SharedMixin, models.Model):
     userbrokers: RRel['UserBrokers']
     trades: RRel['Trade']
     
-    full = Manager()
+    og = Manager()
     
     class Meta:
         table = 'trades_broker'
-        manager = CuratorM()
+        manager = CuratorManager()
     
     def __str__(self):
         return modstr(self, 'name')
@@ -68,11 +68,11 @@ class UserBrokers(DTMixin, SharedMixin, models.Model):
     is_primary = fl.BooleanField(default=False)
     meta = fl.JSONField(null=True)
 
-    full = Manager()
+    og = Manager()
     
     class Meta:
         table = 'trades_xuserbrokers'
-        manager = CuratorM()
+        manager = CuratorManager()
     
     def __str__(self):
         return modstr(self, 'broker')
@@ -108,11 +108,11 @@ class Owner(DTMixin, SharedMixin, models.Model):
 
     owner_equity: RRel['owner_equity']
 
-    full = Manager()
+    og = Manager()
 
     class Meta:
         table = 'trades_owner'
-        manager = CuratorM()
+        manager = CuratorManager()
 
     def __str__(self):
         return modstr(self, 'name')
@@ -134,11 +134,11 @@ class Equity(DTMixin, SharedMixin, models.Model):
     stash: RRel['Stash']
     equity_marks: RRel['Mark']
 
-    full = Manager()
+    og = Manager()
 
     class Meta:
         table = 'trades_equity'
-        manager = CuratorM()
+        manager = CuratorManager()
         
     def __str__(self):
         return modstr(self, 'ticker')
@@ -156,11 +156,11 @@ class Collection(DTMixin, SharedMixin, models.Model):
                                       through='trades_xequitycollections',
                                       backward_key='collection_id', forward_key='equity_id')
 
-    full = Manager()
+    og = Manager()
     
     class Meta:
         table = 'trades_collection'
-        manager = CuratorM()
+        manager = CuratorManager()
     
     def __str__(self):
         return modstr(self, 'name')
@@ -192,11 +192,11 @@ class Trade(DTMixin, SharedMixin, models.Model):
 
     basetrade_trades: RRel['Trade']
     
-    full = Manager()
+    og = Manager()
 
     class Meta:
         table = 'trades_trade'
-        manager = CuratorM()
+        manager = CuratorManager()
 
     def __str__(self):
         return modstr(self, 'stash__equity')
@@ -213,11 +213,11 @@ class Stash(DTMixin, SharedMixin, models.Model):
 
     trades: RRel['Trade']
 
-    full = Manager()
+    og = Manager()
     
     class Meta:
         table = 'trades_stash'
-        manager = CuratorM()
+        manager = CuratorManager()
 
     def __str__(self):
         return modstr(self, 'equity')
@@ -243,11 +243,11 @@ class Mark(DTMixin, SharedMixin, models.Model):
     meta = fl.JSONField(null=True)
     author: FKRel['UserMod'] = FKField('models.UserMod', related_name='author_marks')
 
-    full = Manager()
+    og = Manager()
 
     class Meta:
         table = 'trades_mark'
-        manager = CuratorM()
+        manager = CuratorManager()
 
 
 # class EquityHistory(DTMixin, SharedMixin, models.Model):
@@ -273,9 +273,11 @@ class Mark(DTMixin, SharedMixin, models.Model):
 #     meta = fl.JSONField(null=True)
 
 
-class Demox(DTMixin, SharedMixin, models.Model):
-    full = Manager()
+class Demo(models.Model):
+    deleted_at = fl.DatetimeField(null=True)
+    
+    og = Manager()
     
     class Meta:
-        table = 'demox'
-        manager = CuratorM()
+        table = 'demo'
+        manager = CuratorManager()

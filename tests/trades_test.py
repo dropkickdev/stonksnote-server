@@ -7,7 +7,7 @@ from tortoise.query_utils import Q
 
 from app import ic
 from app.auth import UserMod, Option
-from trades import Trade, Trader, Broker, UserBrokers, Stash, Mark, Equity, Demox
+from trades import Trade, Trader, Broker, UserBrokers, Stash, Mark, Equity, Demo
 from trades.fixtures.routes import trades_init, trades_data
 from tests.app.data import VERIFIED_EMAIL_DEMO
 
@@ -238,8 +238,8 @@ def test_wallet(loop, tempdb, trades_fx):
     pass
 
 
-@pytest.mark.focus
-def test_aaa(loop, db):
+# @pytest.mark.focus
+def test_querynull(loop, db):
     async def ab():
         # await Demox.create(deleted_at=None)
         # await Demox.create(deleted_at=None)
@@ -250,44 +250,45 @@ def test_aaa(loop, db):
         # x = await Demox.create(deleted_at=None)
         # await x.soft_delete()
         
-        # await Demox.bulk_create([
-        #     Demox.create(deleted_at=None),
-        #     Demox.create(deleted_at=datetime.utcnow()),
-        #     Demox.create(deleted_at=None),
-        #     Demox.create(deleted_at=datetime.now(tz=pytz.UTC)),
+        # await Demo.bulk_create([
+        #     Demo(deleted_at=None),
+        #     Demo(deleted_at=None),
+        #     Demo(deleted_at=datetime.utcnow()),
+        #     Demo(deleted_at=None),
+        #     Demo(deleted_at=datetime.now(tz=pytz.UTC)),
         # ])
-
-        # y = await Demox.full.all()
+        
+        # y = await Demo.og.all().values_list('deleted_at', flat=True)
         # ic(y)
-        # x = Demox.filter(deleted_at__not_isnull=True).count()
+        # x = Demo.og.filter(deleted_at__isnull=True).count()
         # ic(x.sql())
         # ic(await x)
-        # x = Demox.filter(deleted_at__isnull=False).count()
+        # x = Demo.og.filter(deleted_at__not_isnull=True).count()
         # ic(x.sql())
         # ic(await x)
-        # x = Demox.filter(deleted_at__not=None).count()
+        # x = Demo.og.filter(deleted_at__isnull=False).count()
         # ic(x.sql())
         # ic(await x)
-        # x = Demox.filter(deleted_at__not_isnull=True).count()
+        # x = Demo.og.filter(~Q(deleted_at__isnull=True)).count()
         # ic(x.sql())
         # ic(await x)
-        # x = Demox.filter(Q(deleted_at__isnull=False)).count()
+        # x = Demo.og.filter(Q(deleted_at__isnull=False)).count()
         # ic(x.sql())
         # ic(await x)
-        # x = Demox.filter(~Q(deleted_at__isnull=True)).count()
-        # ic(x.sql())
-        # ic(await x)
-        # x = Demox.filter(~Q(deleted_at__isnull=True)).count()
-        # ic(x.sql())
-        # ic(await x)
-        # assert assert x == 1
+
+        # conn = Tortoise.get_connection('default')
+        # count = await conn.execute_query_dict(
+        #     'SELECT COUNT(*) count FROM demo WHERE deleted_at IS NOT NULL'            # noqa
+        # )
+        # ic(count)
         
         # x = await Option.all().count()
         # ic(x)
-        # x = await Option.full.all().count()
+        # x = await Option.og.all().count()
         # ic(x)
         
-        ic('foo')
+        # ic('foo')
+        pass
     
     loop.run_until_complete(ab())
     

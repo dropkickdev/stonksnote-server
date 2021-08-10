@@ -325,7 +325,7 @@ def test_curatormanager(tempdb, loop):
         usermod = await UserMod.get(email=VERIFIED_EMAIL_DEMO).only('id', 'is_active', 'deleted_at')
         
         usercount = await UserMod.all().count()
-        fullcount = await UserMod.full.all().count()
+        fullcount = await UserMod.og.all().count()
         assert usercount == 4
         assert fullcount == 4
 
@@ -342,7 +342,7 @@ def test_curatormanager(tempdb, loop):
         usermod.deleted_at = now
         await usermod.save(update_fields=['is_active', 'deleted_at'])
         usercount = await UserMod.all().count()
-        fullcount = await UserMod.full.all().count()
+        fullcount = await UserMod.og.all().count()
         assert usercount == 3
         assert fullcount == 4
         
@@ -358,7 +358,7 @@ def test_curatormanager(tempdb, loop):
         usermod.deleted_at = None
         await usermod.save(update_fields=['is_active', 'deleted_at'])
         usercount = await UserMod.all().count()
-        fullcount = await UserMod.full.all().count()
+        fullcount = await UserMod.og.all().count()
         assert usercount == 4
         assert fullcount == 4
         

@@ -13,7 +13,7 @@ from redis.exceptions import RedisError
 
 from app import settings as s, exceptions as x, cache, red, ic
 from app.validation import UpdateGroupVM, UpdatePermissionVM
-from app.authentication.models.core import DTMixin, CuratorM, SharedMixin, Option
+from app.authentication.models.core import DTMixin, CuratorManager, SharedMixin, Option
 
 
 
@@ -71,11 +71,11 @@ class UserMod(DTMixin, TortoiseBaseUserModel):
     oauth_accounts: RRel['OAuthAccount']
     user_stash: RRel['Stash']
 
-    full = Manager()
+    og = Manager()
 
     class Meta:
         table = 'auth_user'
-        manager = CuratorM()
+        manager = CuratorManager()
 
     def __str__(self):
         return modstr(self, 'id')
@@ -409,11 +409,11 @@ class Group(SharedMixin, models.Model):
                                                  through='auth_group_permissions', backward_key='group_id')
     group_users: M2MRel['UserMod']
 
-    full = Manager()
+    og = Manager()
     
     class Meta:
         table = 'auth_group'
-        manager = CuratorM()
+        manager = CuratorManager()
     
     def __str__(self):
         return modstr(self, 'name')
@@ -532,11 +532,11 @@ class Permission(SharedMixin, models.Model):
     groups: M2MRel[Group]
     userpermissions: FKRel[UserPermissions]
     
-    full = Manager()
+    og = Manager()
     
     class Meta:
         table = 'auth_permission'
-        manager = CuratorM()
+        manager = CuratorManager()
     
     def __str__(self):
         return modstr(self, 'name')
